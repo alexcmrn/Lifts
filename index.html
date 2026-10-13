@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Gym tracker</title>
+<title>Lifts</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap">
@@ -226,8 +226,8 @@ nav.tabs button[hidden] { display: none; }
 <div class="wrap">
   <header>
     <div>
-      <h1>Gym tracker</h1>
-      <p class="status" id="status">Saved on this device</p>
+      <h1>Lifts</h1>
+      
     </div>
 
   </header>
@@ -326,7 +326,7 @@ nav.tabs button[hidden] { display: none; }
     try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
   }
   function setStatus(synced) {
-    $('status').textContent = synced ? 'Saved to your account' : 'Saved on this device only';
+    /* save status text removed */
   }
   function persist() {
     saveLocal();
