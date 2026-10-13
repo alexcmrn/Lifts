@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gym tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap">
+<style>
+:root {
+  --bg: #EDEFF1;
+  --surface: #FFFFFF;
+  --field: #F5F6F8;
+  --ink: #161B22;
+  --mute: #5B6573;
+  --line: #D3D8DE;
+  --pr: #D7322B;
+  --pr-ink: #FFFFFF;
+  --accent: #1F5FBF;
+  color-scheme: light;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12161B;
+    --surface: #1A2027;
+    --field: #232B34;
+    --ink: #EEF1F4;
+    --mute: #9AA4B0;
+    --line: #2E3843;
+    --pr: #FF5A4F;
+    --pr-ink: #1A0907;
+    --accent: #6AA3FF;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12161B;
+  --surface: #1A2027;
+  --field: #232B34;
+  --ink: #EEF1F4;
+  --mute: #9AA4B0;
+  --line: #2E3843;
+  --pr: #FF5A4F;
+  --pr-ink: #1A0907;
+  --accent: #6AA3FF;
+  color-scheme: dark;
+}
+html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 400 16px/1.5 'Barlow', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+.wrap { max-width: 720px; margin: 0 auto; padding: 20px 16px 56px; }
+h1, h2, h3, .num {
+  font-family: 'Barlow Condensed', 'Arial Narrow', system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+h1 { font-size: 2.6rem; line-height: 1; margin: 0; font-weight: 700; letter-spacing: .01em; }
+h2 { font-size: 1.7rem; line-height: 1.1; margin: 0 0 10px; font-weight: 600; }
+h3 { font-size: 1.4rem; line-height: 1.1; margin: 0; font-weight: 600; }
+p { margin: 0; }
+header { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.status { margin: 6px 0 0; font-size: .85rem; color: var(--mute); }
+
+.unit { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.unit button {
+  font: 600 1.05rem 'Barlow Condensed', sans-serif;
+  min-width: 52px; height: 40px; border: 0; background: transparent; color: var(--mute); cursor: pointer;
+}
+.unit button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+
+nav.tabs { display: flex; gap: 18px; border-bottom: 1px solid var(--line); margin-bottom: 22px; }
+nav.tabs button {
+  font: 600 1.35rem 'Barlow Condensed', sans-serif; background: none; border: 0; cursor: pointer;
+  color: var(--mute); padding: 8px 0 9px; margin-bottom: -1px; border-bottom: 4px solid transparent;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+nav.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--pr); }
+.live { width: 9px; height: 9px; border-radius: 50%; background: var(--pr); display: inline-block; }
+
+button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+.primary, .submit {
+  border: 0; border-radius: 8px; cursor: pointer; background: var(--ink); color: var(--bg);
+  font: 600 1.3rem 'Barlow Condensed', sans-serif; letter-spacing: .02em; height: 50px; padding: 0 22px;
+}
+.primary:active, .submit:active { transform: translateY(1px); }
+.submit { width: 100%; height: 58px; font-size: 1.5rem; }
+.secondary {
+  border: 1px solid var(--line); border-radius: 8px; cursor: pointer; background: var(--surface); color: var(--ink);
+  font: 600 1.15rem 'Barlow Condensed', sans-serif; height: 48px; padding: 0 18px;
+}
+.linkbtn { font: 500 .95rem 'Barlow', sans-serif; background: none; border: 0; padding: 6px 0; color: var(--accent); cursor: pointer; text-decoration: underline; }
+.linkbtn.danger.armed { color: var(--pr); font-weight: 600; }
+.linkbtn.mute { color: var(--mute); }
+
+.empty { color: var(--mute); max-width: 52ch; }
+.sub { color: var(--mute); font-size: .92rem; }
+
+/* idle workout */
+.idle { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 22px 16px 18px; }
+.idle p { margin-bottom: 16px; color: var(--mute); }
+
+/* active workout */
+.wkhead { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.elapsed { font-size: 3rem; line-height: 1; font-weight: 700; }
+.ex { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 14px 12px; margin-top: 12px; }
+.exhead { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.last { color: var(--mute); font-size: .9rem; margin: 2px 0 8px; }
+.srow { display: flex; align-items: center; gap: 12px; padding: 7px 0; border-top: 1px solid var(--line); }
+.srow .n { width: 1.6em; color: var(--mute); font: 600 1.1rem 'Barlow Condensed', sans-serif; }
+.srow .load { font: 600 1.35rem 'Barlow Condensed', sans-serif; font-variant-numeric: tabular-nums; }
+.srow .linkbtn { margin-left: auto; color: var(--mute); }
+.entry { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: end; margin-top: 10px; }
+.field { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.field label { font-size: .85rem; color: var(--mute); font-weight: 500; }
+.field input {
+  height: 48px; width: 100%; padding: 0 12px; font: 500 1.2rem 'Barlow', sans-serif;
+  color: var(--ink); background: var(--field); border: 1px solid var(--line); border-radius: 8px;
+}
+.err { color: var(--pr); font-weight: 500; margin-top: 8px; font-size: .95rem; }
+.addex { margin-top: 18px; }
+.addex .row { display: flex; gap: 10px; }
+.addex .field { flex: 1; }
+.endrow { margin-top: 26px; display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
+.endrow .linkbtn { align-self: center; }
+
+/* summary */
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 6px 0 18px; }
+.stat .num { font-size: 2rem; line-height: 1; font-weight: 700; display: block; }
+.stat span.l { font-size: .85rem; color: var(--mute); }
+.banner { border-radius: 10px; padding: 14px 16px; border: 1px solid var(--line); background: var(--surface); border-left-width: 6px; }
+.banner.base { border-left-color: var(--accent); }
+.banner.none { border-left-color: var(--mute); }
+.banner .t { font: 700 2.2rem/1.05 'Barlow Condensed', sans-serif; }
+.banner.none .t { font-size: 1.6rem; font-weight: 600; }
+.banner .bx { font: 600 1.25rem 'Barlow Condensed', sans-serif; margin-top: 12px; }
+.banner p.l { margin-top: 1px; }
+.banner.pr { background: var(--pr); color: var(--pr-ink); border-color: var(--pr); animation: stamp .24s ease-out; }
+@keyframes stamp { from { transform: scale(1.1) rotate(-1.2deg); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .banner.pr { animation: none; } }
+.recap { margin-top: 22px; }
+.recap h3 { margin-bottom: 6px; }
+.exrow { padding: 10px 0; border-top: 1px solid var(--line); }
+.exrow .name { font: 600 1.25rem 'Barlow Condensed', sans-serif; margin-right: 8px; }
+.setline { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 2px; }
+.setline .s { font: 600 1.15rem 'Barlow Condensed', sans-serif; font-variant-numeric: tabular-nums; }
+.chip { font: 600 .78rem 'Barlow', sans-serif; padding: 1px 8px; border-radius: 99px; border: 1px solid var(--line); color: var(--mute); margin-left: 6px; vertical-align: 2px; }
+.chip.pr { background: var(--pr); border-color: var(--pr); color: var(--pr-ink); }
+.after { margin-top: 20px; }
+
+/* records */
+.tablewrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; font-weight: 500; font-size: .88rem; color: var(--mute); padding: 6px 8px 6px 0; border-bottom: 1px solid var(--line); }
+td { padding: 10px 8px 10px 0; border-bottom: 1px solid var(--line); vertical-align: middle; }
+th.r, td.r { text-align: right; padding-right: 0; }
+td .num { font-size: 1.3rem; font-weight: 600; }
+td small { color: var(--mute); font-size: .85rem; }
+.liftbtn {
+  font: 600 1.3rem 'Barlow Condensed', sans-serif; background: none; border: 0; padding: 0; cursor: pointer;
+  color: var(--ink); text-align: left; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 4px;
+}
+tr.sel .liftbtn { text-decoration-color: var(--pr); text-decoration-thickness: 3px; }
+.detail { margin-top: 30px; }
+.detail h3.big { font-size: 1.9rem; margin-bottom: 10px; }
+.chart svg { display: block; width: 100%; height: auto; }
+.chart .cap { margin-top: 2px; font-size: .88rem; color: var(--mute); }
+.sect { margin-top: 24px; }
+.sect h4 { margin: 0 0 6px; font: 600 1.25rem 'Barlow Condensed', sans-serif; }
+.rm { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 8px; }
+.rm div { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; background: var(--surface); }
+.rm .num { font-size: 1.5rem; font-weight: 600; line-height: 1.1; display: block; }
+.rm small { color: var(--mute); }
+.tl { padding: 8px 0; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.tl .d { color: var(--mute); font-size: .9rem; min-width: 6.5em; }
+.tl .s { font: 600 1.2rem 'Barlow Condensed', sans-serif; }
+
+/* history */
+.wk { padding: 14px 0 6px; border-top: 1px solid var(--line); }
+.wkh { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; }
+.wkh h3 { margin-right: auto; }
+.wkh .sub { flex-basis: 100%; order: 3; }
+.wkh .linkbtn { order: 2; }
+.more { margin-top: 12px; }
+.wkbtn { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: none; border: 0; padding: 10px 0; cursor: pointer; text-align: left; color: var(--ink); font: inherit; }
+.wkmain { display: flex; flex-direction: column; min-width: 0; }
+.wkt { font: 600 1.4rem/1.15 'Barlow Condensed', sans-serif; }
+.wkside { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.chev { color: var(--mute); font-size: 1.1rem; width: 1em; text-align: center; }
+.wkdel { padding: 6px 0 8px; }
+
+/* plans */
+.plans { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+.plan { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: flex; gap: 12px; align-items: center; justify-content: space-between; }
+.plan .pname { font: 600 1.5rem/1.1 'Barlow Condensed', sans-serif; }
+.plan .pex { color: var(--mute); font-size: .92rem; margin-top: 3px; }
+.plan .acts { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+.idle .plans { margin-top: 0; gap: 0; }
+.idle .plan { background: none; border: 0; border-top: 1px solid var(--line); border-radius: 0; padding: 12px 0; }
+.tgt { font-weight: 600; margin: 2px 0 0; }
+.wkright { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+nav.tabs button[hidden] { display: none; }
+.pe-row { display: grid; grid-template-columns: 76px 1fr; gap: 8px; align-items: end; padding: 12px 0; border-top: 1px solid var(--line); }
+.pe-row .nm { grid-column: 1 / -1; }
+.pe-act { display: flex; gap: 14px; justify-content: flex-end; align-items: center; height: 48px; }
+.peactions { display: flex; gap: 10px; margin-top: 22px; }
+
+@media (max-width: 420px) {
+  h1 { font-size: 2.2rem; }
+  .stats { grid-template-columns: 1fr 1fr; row-gap: 14px; }
+  .entry { grid-template-columns: 1fr 1fr; }
+  .entry .primary { grid-column: 1 / -1; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Gym tracker</h1>
+      <p class="status" id="status">Saved on this device</p>
+    </div>
+
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button type="button" role="tab" data-a="tab" data-tab="workout" id="tab-workout">Workout</button>
+    <button type="button" role="tab" data-a="tab" data-tab="plans" id="tab-plans">Plans</button>
+    <button type="button" role="tab" data-a="tab" data-tab="records" id="tab-records">Records</button>
+    <button type="button" role="tab" data-a="tab" data-tab="history" id="tab-history">History</button>
+  </nav>
+
+
+  <main id="panel" role="tabpanel"></main>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var LB = 2.20462262;
+  var EPS = 0.001;
+  var LS_KEY = 'gymlog.v1';
+  var COMMON = ['Squat', 'Bench press', 'Deadlift', 'Overhead press', 'Barbell row', 'Front squat',
+    'Romanian deadlift', 'Incline bench press', 'Pull-up', 'Dip', 'Hip thrust', 'Lat pulldown'];
+  var REP_TARGETS = [1, 3, 5, 8, 10];
+
+  var state = { entries: [], workouts: [], plans: [], active: null, unit: 'kg' };
+  var ui = { tab: 'plans', sel: null, summary: null, drafts: {}, newEx: '', err: null, armed: null, histShown: 15, focus: null, edit: null, planSaved: null, open: {} };
+  var remoteRef = null;
+  var writeQueue = Promise.resolve();
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* ---------- helpers ---------- */
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function key(name) { return String(name).trim().toLowerCase().replace(/\s+/g, ' '); }
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function today() {
+    var d = new Date();
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+  function toDisp(kg) { return state.unit === 'kg' ? kg : kg * LB; }
+  function toKg(v) { return state.unit === 'kg' ? v : v / LB; }
+  function fmtNum(v) { return String(+v.toFixed(state.unit === 'kg' ? 2 : 1)); }
+  function fmtW(kg) { return fmtNum(toDisp(kg)); }
+  function fmtDate(s, long) {
+    var d = new Date(s + 'T00:00:00');
+    var opts = { day: 'numeric', month: 'short' };
+    if (long) opts.weekday = 'short';
+    if (d.getFullYear() !== new Date().getFullYear()) opts.year = 'numeric';
+    return d.toLocaleDateString('en-GB', opts);
+  }
+  function fmtDur(ms) {
+    var s = Math.max(0, Math.floor(ms / 1000));
+    var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    return h > 0 ? h + ':' + pad(m) + ':' + pad(sec) : m + ':' + pad(sec);
+  }
+  function e1rm(kg, reps) {
+    if (reps > 12) return null;
+    return reps === 1 ? kg : kg * (1 + reps / 30);
+  }
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+  function cmpEntries(a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : a.ts - b.ts; }
+  function grp(e) { return e.wid || ('d:' + e.date); }
+  function groupByEx(sets) {
+    var order = [], map = {};
+    sets.forEach(function (e) {
+      var k = key(e.ex);
+      if (!map[k]) { map[k] = { k: k, name: e.ex, sets: [] }; order.push(k); }
+      map[k].sets.push(e);
+    });
+    return order.map(function (k) { return map[k]; });
+  }
+
+  /* ---------- storage ---------- */
+  function loadLocal() {
+    try {
+      var raw = localStorage.getItem(LS_KEY);
+      if (raw) {
+        var d = JSON.parse(raw);
+        if (d && Array.isArray(d.entries)) {
+          state.entries = d.entries;
+          state.workouts = Array.isArray(d.workouts) ? d.workouts : [];
+          state.plans = Array.isArray(d.plans) ? d.plans : [];
+          state.active = d.active || null;
+          if (d.unit === 'kg' || d.unit === 'lb') state.unit = d.unit;
+        }
+      }
+    } catch (e) { /* storage can be empty or blocked */ }
+  }
+  function saveLocal() {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+  }
+  function setStatus(synced) {
+    $('status').textContent = synced ? 'Saved to your account' : 'Saved on this device only';
+  }
+  function persist() {
+    saveLocal();
+    if (!remoteRef) return;
+    var payload = JSON.parse(JSON.stringify({ entries: state.entries, workouts: state.workouts, plans: state.plans, active: state.active, unit: state.unit }));
+    writeQueue = writeQueue
+      .then(function () { return remoteRef.set(payload); })
+      .then(function () { setStatus(true); })
+      .catch(function () { setStatus(false); });
+  }
+  function mergeById(a, b) {
+    var seen = {}, out = [];
+    (a || []).concat(b || []).forEach(function (x) {
+      if (x && !seen[x.id]) { seen[x.id] = 1; out.push(x); }
+    });
+    return out;
+  }
+  function initRemote() {
+    if (!window.claude || !window.claude.use) return;
+    Promise.all([window.claude.use('db'), window.claude.use('user')]).then(function (res) {
+      var db = res[0], user = res[1];
+      if (!db || !user) return null;
+      return user.id().then(function (id) {
+        if (!id) return null;
+        var ref = db.doc('data/users/' + id + '/gymlog');
+        return ref.get().then(function (snap) {
+          if (snap.exists) {
+            var d = JSON.parse(JSON.stringify(snap.data()));
+            if (d && Array.isArray(d.entries)) {
+              state.entries = mergeById(d.entries, state.entries);
+              state.workouts = mergeById(d.workouts, state.workouts);
+              state.plans = mergeById(d.plans, state.plans);
+              if (!state.active && d.active && !state.workouts.some(function (w) { return w.id === d.active.id; })) state.active = d.active;
+              if (d.unit === 'kg' || d.unit === 'lb') state.unit = d.unit;
+            }
+          }
+          remoteRef = ref;
+          setStatus(true);
+          persist();
+          render();
+        });
+      });
+    }).catch(function () { /* stay on device storage */ });
+  }
+
+  /* ---------- PR analysis ---------- */
+  // Walks every set in date order. A lift's first session is its baseline, so nothing in it counts as a PR.
+  function analyze(entries) {
+    var out = {};
+    var per = {};
+    entries.slice().sort(cmpEntries).forEach(function (e) {
+      var k = key(e.ex);
+      var s = per[k] || (per[k] = { base: grp(e), maxKg: -1, maxE: -1, sets: [] });
+      var res = { first: grp(e) === s.base, types: [] };
+      var ee = e1rm(e.kg, e.reps);
+      if (!res.first) {
+        if (e.kg > s.maxKg + EPS) res.types.push({ t: 'weight', prev: s.maxKg });
+        if (ee !== null && s.maxE > 0 && ee > s.maxE + 0.05) res.types.push({ t: 'e1rm', prev: s.maxE });
+        var atOrAbove = s.sets.filter(function (x) { return x.kg >= e.kg - EPS; });
+        if (atOrAbove.length) {
+          var mr = Math.max.apply(null, atOrAbove.map(function (x) { return x.reps; }));
+          if (e.reps > mr) res.types.push({ t: 'reps', prev: mr });
+        }
+      }
+      s.maxKg = Math.max(s.maxKg, e.kg);
+      if (ee !== null) s.maxE = Math.max(s.maxE, ee);
+      s.sets.push({ kg: e.kg, reps: e.reps });
+      out[e.id] = res;
+    });
+    return out;
+  }
+  // Collapses the flagged sets of one lift in one workout into one line per PR type.
+  function exPRs(sets, flags) {
+    var res = { lines: [], base: false };
+    var by = { weight: [], e1rm: [], reps: [] };
+    sets.forEach(function (e) {
+      var f = flags[e.id];
+      if (!f) return;
+      if (f.first) res.base = true;
+      f.types.forEach(function (t) { by[t.t].push({ e: e, t: t }); });
+    });
+    var u = state.unit;
+    if (by.weight.length) {
+      var w0 = by.weight[0], w1 = by.weight[by.weight.length - 1];
+      res.lines.push('Weight PR: ' + fmtW(w1.e.kg) + ' ' + u + ', up from ' + fmtW(w0.t.prev) + ' ' + u);
+    }
+    if (by.e1rm.length) {
+      var q0 = by.e1rm[0], q1 = by.e1rm[by.e1rm.length - 1];
+      res.lines.push('Est. 1RM PR: ' + fmtW(e1rm(q1.e.kg, q1.e.reps)) + ' ' + u + ', up from ' + fmtW(q0.t.prev) + ' ' + u);
+    }
+    if (by.reps.length) {
+      var r1 = by.reps[by.reps.length - 1];
+      res.lines.push('Rep PR: ' + r1.e.reps + ' reps at ' + fmtW(r1.e.kg) + ' ' + u + ' (previous best ' + r1.t.prev + ')');
+    }
+    return res;
+  }
+  function bests(k) {
+    var heavy = null, est = null, estVal = -1;
+    state.entries.forEach(function (e) {
+      if (key(e.ex) !== k) return;
+      if (!heavy || e.kg > heavy.kg + EPS || (Math.abs(e.kg - heavy.kg) <= EPS && e.reps > heavy.reps)) heavy = e;
+      var v = e1rm(e.kg, e.reps);
+      if (v !== null && v > estVal) { estVal = v; est = e; }
+    });
+    return { heavy: heavy, est: est, estVal: estVal };
+  }
+  function lastSession(k, exWid) {
+    var best = null;
+    state.entries.forEach(function (e) {
+      if (key(e.ex) !== k || (exWid && e.wid === exWid)) return;
+      if (!best || cmpEntries(best, e) < 0) best = e;
+    });
+    if (!best) return [];
+    var g = grp(best);
+    return state.entries.filter(function (e) { return key(e.ex) === k && grp(e) === g; }).sort(cmpEntries);
+  }
+
+  /* ---------- shared bits of markup ---------- */
+  function chips(info) {
+    if (!info || !info.types.length) return '';
+    var map = { weight: 'Weight PR', e1rm: 'Est. 1RM PR', reps: 'Rep PR' };
+    return info.types.map(function (t) { return '<span class="chip pr">' + map[t.t] + '</span>'; }).join('');
+  }
+  function setLine(sets, flags) {
+    return '<div class="setline">' + sets.map(function (e) {
+      return '<span class="s">' + fmtW(e.kg) + ' ' + state.unit + ' \u00D7 ' + e.reps + chips(flags[e.id]) + '</span>';
+    }).join('') + '</div>';
+  }
+  function recapRows(sets, flags) {
+    return groupByEx(sets).map(function (g) {
+      var p = exPRs(g.sets, flags);
+      return '<div class="exrow"><span class="name">' + esc(g.name) + '</span>' +
+        (p.base ? '<span class="chip">Baseline</span>' : '') + setLine(g.sets, flags) + '</div>';
+    }).join('');
+  }
+
+  /* ---------- Workout tab ---------- */
+  function getDraft(k) { return ui.drafts[k] || (ui.drafts[k] = { w: '', r: '' }); }
+  function prefill(name) {
+    var d = getDraft(key(name));
+    var sess = lastSession(key(name), state.active ? state.active.id : null);
+    if (sess.length) {
+      var last = sess[sess.length - 1];
+      d.w = fmtW(last.kg);
+      d.r = String(last.reps);
+    }
+  }
+
+  function idleHTML() {
+    var last = state.workouts.slice().sort(function (a, b) { return b.start - a.start; })[0];
+    var info = 'Add the exercises you do as you go. When you finish, you get a summary of any PRs.';
+    if (last) {
+      var n = state.entries.filter(function (e) { return e.wid === last.id; }).length;
+      info = 'Last workout: ' + fmtDate(last.date, true) + ', ' + n + (n === 1 ? ' set' : ' sets') + '. ' + info;
+    }
+    var html = '<div class="idle"><h2>Ready to train?</h2><p>' + esc(info) + '</p>';
+    if (state.plans.length) {
+      html += '<div class="plans">' + state.plans.map(function (p) { return planRow(p, false); }).join('') + '</div>' +
+        '<button type="button" class="secondary" style="margin-top:14px;width:100%" data-a="start">Start an empty workout</button>';
+    } else {
+      html += '<button type="button" class="submit" data-a="start">Start workout</button>' +
+        '<p style="margin:14px 0 0"><button type="button" class="linkbtn" data-a="tab" data-tab="plans">Create a plan</button> to load your exercises automatically.</p>';
+    }
+    return html + '</div>';
+  }
+
+  function unitToggleHTML() {
+    return '<div class="unit" role="group" aria-label="Weight unit">' + ['kg', 'lb'].map(function (u) {
+      return '<button type="button" data-a="unit" data-unit="' + u + '" aria-pressed="' + (state.unit === u) + '">' + u + '</button>';
+    }).join('') + '</div>';
+  }
+
+  function activeHTML() {
+    var a = state.active;
+    var html = '<div class="wkhead"><div><div class="elapsed num" id="elapsed">' + fmtDur(Date.now() - a.start) + '</div>' +
+      '<div class="sub">' + esc(a.plan ? a.plan + ' in progress' : 'Workout in progress') + '</div></div>' +
+      '<div class="wkright">' + unitToggleHTML() + '<button type="button" class="primary" data-a="finish">Finish workout</button></div></div>';
+    if (ui.err && ui.err.i === -1) html += '<p class="err">' + esc(ui.err.msg) + '</p>';
+
+    
+
+    a.exercises.forEach(function (name, i) {
+      var k = key(name);
+      var d = getDraft(k);
+      var sets = state.entries.filter(function (e) { return e.wid === a.id && key(e.ex) === k; }).sort(cmpEntries);
+      var sess = lastSession(k, a.id);
+      html += '<div class="ex"><div class="exhead"><h3>' + esc(name) + '</h3>' +
+        (sets.length ? '' : '<button type="button" class="linkbtn mute" data-a="rmex" data-i="' + i + '">Remove</button>') + '</div>';
+      var tg = (a.targets || {})[k];
+      if (tg) html += '<p class="tgt">Plan: ' + tg.sets + ' sets \u00B7 ' + Math.min(sets.length, tg.sets) + ' of ' + tg.sets + ' done</p>';
+      html += '<p class="last">' + (sess.length
+        ? 'Last time: ' + esc(sess.slice(0, 6).map(function (e) { return fmtW(e.kg) + ' \u00D7 ' + e.reps; }).join(', ')) + ' ' + state.unit + ' (' + fmtDate(sess[0].date) + ')'
+        : '') + '</p>';
+      sets.forEach(function (e, j) {
+        html += '<div class="srow"><span class="n">' + (j + 1) + '</span><span class="load">' + fmtW(e.kg) + ' ' + state.unit + ' \u00D7 ' + e.reps + '</span>' +
+          '<button type="button" class="linkbtn" data-a="rmset" data-id="' + e.id + '" aria-label="Remove set ' + (j + 1) + ' of ' + esc(name) + '">Remove</button></div>';
+      });
+      html += '<div class="entry">' +
+        '<div class="field"><label for="w' + i + '">Weight (' + state.unit + ')</label><input id="w' + i + '" data-dw="' + i + '" inputmode="decimal" autocomplete="off" value="' + esc(d.w) + '"></div>' +
+        '<div class="field"><label for="r' + i + '">Reps</label><input id="r' + i + '" data-dr="' + i + '" inputmode="numeric" autocomplete="off" value="' + esc(d.r) + '"></div>' +
+        '<button type="button" class="primary" data-a="addset" data-i="' + i + '">Add set</button></div>';
+      if (ui.err && ui.err.i === i) html += '<p class="err">' + esc(ui.err.msg) + '</p>';
+      html += '</div>';
+    });
+
+    html += '<div class="addex"><div class="row"><div class="field"><label for="newex">Add exercise</label>' +
+      '<input id="newex" autocomplete="off" value="' + esc(ui.newEx) + '"></div>' +
+      '<button type="button" class="secondary" data-a="addex" style="align-self:flex-end">Add</button></div></div>';
+
+    html += '<div class="endrow"><button type="button" class="linkbtn danger mute' + (ui.armed === 'discard' ? ' armed' : '') + '" data-a="discard">' +
+      (ui.armed === 'discard' ? 'Tap again to discard this workout' : 'Discard workout') + '</button></div>';
+    return html;
+  }
+
+  function summaryHTML(w) {
+    var flags = analyze(state.entries);
+    var sets = state.entries.filter(function (e) { return e.wid === w.id; }).sort(cmpEntries);
+    var groups = groupByEx(sets);
+    var vol = sets.reduce(function (s, e) { return s + e.kg * e.reps; }, 0);
+    var infos = groups.map(function (g) { return { g: g, p: exPRs(g.sets, flags) }; });
+    var total = infos.reduce(function (s, x) { return s + x.p.lines.length; }, 0);
+
+    var html = '<h2>' + esc(w.plan ? w.plan + ' complete' : 'Workout complete') + '</h2><div class="stats">' +
+      '<div class="stat"><span class="num">' + fmtDur(w.end - w.start) + '</span><span class="l">Time</span></div>' +
+      '<div class="stat"><span class="num">' + groups.length + '</span><span class="l">' + (groups.length === 1 ? 'Exercise' : 'Exercises') + '</span></div>' +
+      '<div class="stat"><span class="num">' + sets.length + '</span><span class="l">' + (sets.length === 1 ? 'Set' : 'Sets') + '</span></div>' +
+      '<div class="stat"><span class="num">' + Math.round(toDisp(vol)).toLocaleString('en-GB') + '</span><span class="l">Volume (' + state.unit + ')</span></div></div>';
+
+    if (total > 0) {
+      html += '<div class="banner pr" role="status"><div class="t">' + (total === 1 ? 'You hit a PR' : 'You hit ' + total + ' PRs') + '</div>';
+      infos.forEach(function (x) {
+        if (!x.p.lines.length) return;
+        html += '<div class="bx">' + esc(x.g.name) + '</div>' + x.p.lines.map(function (l) { return '<p class="l">' + esc(l) + '</p>'; }).join('');
+      });
+      html += '</div>';
+    } else {
+      var bases = infos.filter(function (x) { return x.p.base; }).map(function (x) { return x.g.name; });
+      html += '<div class="banner none" role="status"><div class="t">No PRs this workout</div><p class="l">' +
+        (bases.length ? esc('First time logging ' + bases.join(', ') + ': that is now your baseline to beat.') : '') + '</p></div>';
+      if (bases.length && total === 0) { /* baseline note already shown */ }
+    }
+    if (total > 0) {
+      var b2 = infos.filter(function (x) { return x.p.base; }).map(function (x) { return x.g.name; });
+      if (b2.length) html += '<p class="sub" style="margin-top:10px">First time logging ' + esc(b2.join(', ')) + ': baseline set.</p>';
+    }
+
+    html += '<div class="recap"><h3>What you did</h3>' + recapRows(sets, flags) + '</div>' +
+      '<div class="after"><button type="button" class="secondary" data-a="done">Done</button></div>' +
+      (w.plan ? '' : ui.planSaved === w.id
+        ? '<p class="sub" style="margin-top:12px">Saved to Plans.</p>'
+        : '<div style="margin-top:8px"><button type="button" class="linkbtn" data-a="plan-fromworkout" data-id="' + esc(w.id) + '">Save this workout as a plan</button></div>');
+    return html;
+  }
+
+  function workoutHTML() {
+    if (state.active) return activeHTML();
+    if (ui.summary) {
+      var w = state.workouts.filter(function (x) { return x.id === ui.summary; })[0];
+      if (w) return summaryHTML(w);
+    }
+    return '';
+  }
+
+  /* ---------- Plans tab ---------- */
+  function canonName(n) {
+    var k = key(n);
+    var known = state.entries.filter(function (en) { return key(en.ex) === k; })[0];
+    if (known) return known.ex;
+    var out = n;
+    COMMON.forEach(function (c) { if (key(c) === k) out = c; });
+    return out;
+  }
+  function planSummary(p) {
+    return p.exercises.map(function (x) { return x.name + ' ' + x.sets + (x.sets === 1 ? ' set' : ' sets'); }).join(' \u00B7 ');
+  }
+  function planRow(p, full) {
+    var acts = '';
+    if (!state.active) acts += '<button type="button" class="primary" data-a="start" data-plan="' + esc(p.id) + '">Start</button>';
+    if (full) {
+      var armed = ui.armed === 'plan:' + p.id;
+      acts += '<span><button type="button" class="linkbtn" data-a="plan-edit" data-id="' + esc(p.id) + '">Edit</button> ' +
+        '<button type="button" class="linkbtn danger mute' + (armed ? ' armed' : '') + '" data-a="plan-del" data-id="' + esc(p.id) + '">' + (armed ? 'Tap again' : 'Delete') + '</button></span>';
+    }
+    return '<div class="plan"><div><div class="pname">' + esc(p.name) + '</div><div class="pex">' + esc(planSummary(p)) + '</div></div><div class="acts">' + acts + '</div></div>';
+  }
+  function plansHTML() {
+    if (ui.edit) return editorHTML();
+    var html = '<div class="wkhead"><h2 style="margin:0">Workout plans</h2><button type="button" class="primary" data-a="plan-new">New plan</button></div>' +
+      (state.active ? '' : '<button type="button" class="secondary" style="width:100%" data-a="start">Start an empty workout</button>');
+    if (!state.plans.length) {
+      return html + '';
+    }
+    return html + '<div class="plans">' + state.plans.map(function (p) { return planRow(p, true); }).join('') + '</div>';
+  }
+  function editorHTML() {
+    var e = ui.edit;
+    var html = '<h2>' + (e.id ? 'Edit plan' : 'New plan') + '</h2>' +
+      '<div class="field"><label for="pname">Plan name</label><input id="pname" autocomplete="off" value="' + esc(e.name) + '"></div>' +
+      '<div class="sect"><h4>Exercises</h4>';
+    e.exercises.forEach(function (x, i) {
+      html += '<div class="pe-row">' +
+        '<div class="field nm"><label for="pn' + i + '">Exercise ' + (i + 1) + '</label><input id="pn' + i + '" autocomplete="off" data-pe="' + i + '" data-f="name" value="' + esc(x.name) + '"></div>' +
+        '<div class="field"><label for="ps' + i + '">Sets</label><input id="ps' + i + '" inputmode="numeric" autocomplete="off" data-pe="' + i + '" data-f="sets" value="' + esc(x.sets) + '"></div>' +
+        '' +
+        '<div class="pe-act">' +
+        (i > 0 ? '<button type="button" class="linkbtn" data-a="plan-up" data-i="' + i + '">Up</button>' : '') +
+        (i < e.exercises.length - 1 ? '<button type="button" class="linkbtn" data-a="plan-down" data-i="' + i + '">Down</button>' : '') +
+        '<button type="button" class="linkbtn mute" data-a="plan-rmrow" data-i="' + i + '">Remove</button></div></div>';
+    });
+    html += '<button type="button" class="secondary" data-a="plan-addrow" style="margin-top:6px">Add exercise</button></div>';
+    if (e.err) html += '<p class="err">' + esc(e.err) + '</p>';
+    html += '<div class="peactions"><button type="button" class="primary" data-a="plan-save">Save plan</button>' +
+      '<button type="button" class="secondary" data-a="plan-cancel">Cancel</button></div>';
+    return html;
+  }
+  function savePlan() {
+    var e = ui.edit;
+    var name = e.name.trim().replace(/\s+/g, ' ');
+    var seen = {}, list = [];
+    e.exercises.forEach(function (x) {
+      var n = x.name.trim().replace(/\s+/g, ' ');
+      if (!n || seen[key(n)]) return;
+      seen[key(n)] = 1;
+      var sets = parseInt(x.sets, 10);
+      if (!(sets >= 1)) sets = 3;
+      list.push({ name: canonName(n), sets: Math.min(sets, 20) });
+    });
+    if (!name) { e.err = 'Give the plan a name.'; ui.focus = '#pname'; render(); return; }
+    if (!list.length) { e.err = 'Add at least one exercise.'; render(); return; }
+    var plan = { id: e.id || uid(), name: name, exercises: list };
+    if (e.id) state.plans = state.plans.map(function (p) { return p.id === e.id ? plan : p; });
+    else state.plans.push(plan);
+    ui.edit = null;
+    persist();
+    render();
+  }
+  function planAction(a, t) {
+    var e = ui.edit;
+    var i = +t.dataset.i;
+    if (a === 'plan-new') {
+      ui.edit = { id: null, name: '', exercises: [{ name: '', sets: '3', reps: '' }], err: '' };
+      ui.focus = '#pname';
+    } else if (a === 'plan-edit') {
+      var p = state.plans.filter(function (x) { return x.id === t.dataset.id; })[0];
+      if (!p) return;
+      ui.edit = { id: p.id, name: p.name, err: '', exercises: p.exercises.map(function (x) { return { name: x.name, sets: String(x.sets) }; }) };
+    } else if (a === 'plan-cancel') {
+      ui.edit = null;
+    } else if (a === 'plan-save') {
+      savePlan();
+      return;
+    } else if (a === 'plan-addrow') {
+      e.exercises.push({ name: '', sets: '3', reps: '' });
+      ui.focus = '#pn' + (e.exercises.length - 1);
+    } else if (a === 'plan-rmrow') {
+      e.exercises.splice(i, 1);
+    } else if (a === 'plan-up' || a === 'plan-down') {
+      var j = a === 'plan-up' ? i - 1 : i + 1;
+      var tmp = e.exercises[i]; e.exercises[i] = e.exercises[j]; e.exercises[j] = tmp;
+    } else if (a === 'plan-del') {
+      armThen('plan:' + t.dataset.id, function () {
+        state.plans = state.plans.filter(function (x) { return x.id !== t.dataset.id; });
+        persist(); render();
+      });
+      return;
+    } else if (a === 'plan-fromworkout') {
+      var w = state.workouts.filter(function (x) { return x.id === t.dataset.id; })[0];
+      if (!w) return;
+      var groups = groupByEx(state.entries.filter(function (en) { return en.wid === w.id; }).sort(cmpEntries));
+      state.plans.push({ id: uid(), name: 'Workout ' + fmtDate(w.date), exercises: groups.map(function (g) {
+        return { name: g.name, sets: Math.min(g.sets.length, 20) };
+      }) });
+      ui.planSaved = w.id;
+      persist();
+    }
+    render();
+  }
+
+  /* ---------- Records tab ---------- */
+  function chartHTML(k, flags) {
+    var byDay = {};
+    state.entries.filter(function (e) { return key(e.ex) === k; }).forEach(function (e) {
+      var v = e1rm(e.kg, e.reps);
+      if (v === null) v = e.kg;
+      var d = byDay[e.date] || (byDay[e.date] = { date: e.date, v: -1, pr: false });
+      if (v > d.v) d.v = v;
+      var f = flags[e.id];
+      if (f && f.types.some(function (t) { return t.t === 'e1rm' || t.t === 'weight'; })) d.pr = true;
+    });
+    var pts = Object.keys(byDay).sort().map(function (d) { return byDay[d]; });
+    if (pts.length < 2) return '';
+    var W = 480, H = 190, L = 44, R = 14, T = 14, B = 28;
+    var t0 = new Date(pts[0].date + 'T00:00:00').getTime();
+    var t1 = new Date(pts[pts.length - 1].date + 'T00:00:00').getTime();
+    var vmin = Math.min.apply(null, pts.map(function (p) { return p.v; }));
+    var vmax = Math.max.apply(null, pts.map(function (p) { return p.v; }));
+    var padv = (vmax - vmin) * 0.15 || vmax * 0.05 || 1;
+    var lo = Math.max(0, vmin - padv), hi = vmax + padv;
+    function X(d) {
+      var t = new Date(d + 'T00:00:00').getTime();
+      return L + (t1 === t0 ? 0 : (t - t0) / (t1 - t0)) * (W - L - R);
+    }
+    function Y(v) { return T + (1 - (v - lo) / (hi - lo)) * (H - T - B); }
+    var line = pts.map(function (p) { return X(p.date).toFixed(1) + ',' + Y(p.v).toFixed(1); }).join(' ');
+    var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Estimated one rep max over time">' +
+      '<line x1="' + L + '" y1="' + Y(hi) + '" x2="' + (W - R) + '" y2="' + Y(hi) + '" stroke="var(--line)"/>' +
+      '<line x1="' + L + '" y1="' + Y(lo) + '" x2="' + (W - R) + '" y2="' + Y(lo) + '" stroke="var(--line)"/>' +
+      '<text x="' + (L - 6) + '" y="' + (Y(hi) + 4) + '" text-anchor="end" font-size="12" fill="var(--mute)">' + fmtW(hi) + '</text>' +
+      '<text x="' + (L - 6) + '" y="' + (Y(lo) + 4) + '" text-anchor="end" font-size="12" fill="var(--mute)">' + fmtW(lo) + '</text>' +
+      '<text x="' + L + '" y="' + (H - 8) + '" font-size="12" fill="var(--mute)">' + fmtDate(pts[0].date) + '</text>' +
+      '<text x="' + (W - R) + '" y="' + (H - 8) + '" text-anchor="end" font-size="12" fill="var(--mute)">' + fmtDate(pts[pts.length - 1].date) + '</text>' +
+      '<polyline points="' + line + '" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>';
+    pts.forEach(function (p) {
+      svg += '<circle cx="' + X(p.date).toFixed(1) + '" cy="' + Y(p.v).toFixed(1) + '" r="' + (p.pr ? 5 : 3.5) + '" fill="' + (p.pr ? 'var(--pr)' : 'var(--accent)') + '"/>';
+    });
+    return svg + '</svg>';
+  }
+
+  function recordsHTML() {
+    if (!state.entries.length) {
+      return '';
+    }
+    var groups = {};
+    state.entries.forEach(function (e) {
+      var k = key(e.ex);
+      var g = groups[k] || (groups[k] = { k: k, name: e.ex, last: e.date, lastTs: e.ts, n: 0 });
+      g.n++;
+      if (e.date > g.last || (e.date === g.last && e.ts >= g.lastTs)) { g.last = e.date; g.lastTs = e.ts; g.name = e.ex; }
+    });
+    var rows = Object.keys(groups).map(function (k) { return groups[k]; }).sort(function (a, b) {
+      return a.last < b.last ? 1 : a.last > b.last ? -1 : a.name.localeCompare(b.name);
+    });
+    if (!ui.sel || !groups[ui.sel]) ui.sel = rows[0].k;
+
+    var html = '<h2>All-time bests</h2><div class="tablewrap"><table><thead><tr><th scope="col">Lift</th><th scope="col">Heaviest</th>' +
+      '<th scope="col">Est. 1RM</th><th scope="col" class="r">Last</th></tr></thead><tbody>';
+    rows.forEach(function (g) {
+      var b = bests(g.k);
+      html += '<tr class="' + (ui.sel === g.k ? 'sel' : '') + '"><td><button type="button" class="liftbtn" data-a="sel" data-key="' + esc(g.k) + '"' + (ui.sel === g.k ? ' aria-current="true"' : '') + '>' + esc(g.name) + '</button><br><small>' + g.n + (g.n === 1 ? ' set' : ' sets') + '</small></td>' +
+        '<td><span class="num">' + fmtW(b.heavy.kg) + '</span> <small>' + state.unit + ' \u00D7 ' + b.heavy.reps + '</small></td>' +
+        '<td>' + (b.est ? '<span class="num">' + fmtW(b.estVal) + '</span> <small>' + state.unit + '</small>' : '<small>n/a</small>') + '</td>' +
+        '<td class="r"><small>' + fmtDate(g.last) + '</small></td></tr>';
+    });
+    html += '</tbody></table></div>';
+
+    var k = ui.sel, flags = analyze(state.entries);
+    var mine = state.entries.filter(function (e) { return key(e.ex) === k; });
+    html += '<div class="detail"><h3 class="big">' + esc(groups[k].name) + '</h3><div class="chart">' + chartHTML(k, flags) + '</div>';
+
+    var rm = '';
+    REP_TARGETS.forEach(function (r) {
+      var best = null;
+      mine.forEach(function (e) { if (e.reps >= r && (!best || e.kg > best.kg + EPS)) best = e; });
+      if (best) rm += '<div><span class="num">' + fmtW(best.kg) + ' ' + state.unit + '</span><small>' + r + (r === 1 ? ' rep' : '+ reps') + ' \u00B7 ' + fmtDate(best.date) + '</small></div>';
+    });
+    if (rm) html += '<div class="sect"><h4>Best weight by reps</h4><div class="rm">' + rm + '</div></div>';
+
+    var prs = mine.slice().sort(cmpEntries).reverse().filter(function (e) { return flags[e.id] && flags[e.id].types.length; }).slice(0, 15);
+    html += '<div class="sect"><h4>PR history</h4>' + (prs.length ? prs.map(function (e) {
+      return '<div class="tl"><span class="d">' + fmtDate(e.date, true) + '</span><span class="s">' + fmtW(e.kg) + ' ' + state.unit + ' \u00D7 ' + e.reps + '</span><span>' + chips(flags[e.id]) + '</span></div>';
+    }).join('') : '') + '</div></div>';
+    return html;
+  }
+
+  /* ---------- History tab ---------- */
+  function historyItems() {
+    var items = state.workouts.map(function (w) {
+      return { id: w.id, date: w.date, start: w.start, end: w.end, plan: w.plan || null, legacy: false };
+    });
+    var seen = {};
+    state.entries.forEach(function (e) {
+      if (!e.wid && !seen[e.date]) { seen[e.date] = 1; items.push({ id: 'd:' + e.date, date: e.date, start: null, end: null, legacy: true }); }
+    });
+    return items.sort(function (a, b) {
+      return a.date < b.date ? 1 : a.date > b.date ? -1 : (b.start || 0) - (a.start || 0);
+    });
+  }
+  function itemSets(it) {
+    return state.entries.filter(function (e) { return it.legacy ? (!e.wid && e.date === it.date) : e.wid === it.id; }).sort(cmpEntries);
+  }
+  function historyHTML() {
+    var items = historyItems();
+    if (!items.length) return '';
+    var flags = analyze(state.entries);
+    var html = '<h2>Workouts</h2>';
+    items.slice(0, ui.histShown).forEach(function (it) {
+      var sets = itemSets(it);
+      var groups = groupByEx(sets);
+      var prCount = groups.reduce(function (s, g) { return s + exPRs(g.sets, flags).lines.length; }, 0);
+      var armed = ui.armed === 'wk:' + it.id;
+      var isOpen = !!ui.open[it.id];
+      var meta = sets.length + (sets.length === 1 ? ' set' : ' sets') + (it.end ? ' \u00B7 ' + Math.max(1, Math.round((it.end - it.start) / 60000)) + ' min' : '');
+      html += '<article class="wk"><button type="button" class="wkbtn" data-a="togglewk" data-id="' + esc(it.id) + '" aria-expanded="' + isOpen + '"><span class="wkmain"><span class="wkt">' + (it.plan ? esc(it.plan) + ' \u00B7 ' : '') + fmtDate(it.date, true) + (it.legacy ? ' (logged sets)' : '') + '</span><span class="sub">' + meta + '</span></span><span class="wkside">' +
+        (prCount ? '<span class="chip pr">' + prCount + (prCount === 1 ? ' PR' : ' PRs') + '</span>' : '') +
+        '<span class="chev" aria-hidden="true">' + (isOpen ? '\u25B4' : '\u25BE') + '</span></span></button>' +
+        (isOpen ? recapRows(sets, flags) + '<div class="wkdel"><button type="button" class="linkbtn danger mute' + (armed ? ' armed' : '') + '" data-a="delwk" data-id="' + esc(it.id) + '">' + (armed ? 'Tap again to delete' : 'Delete workout') + '</button></div>' : '') +
+        '</article>';
+    });
+    if (items.length > ui.histShown) html += '<button type="button" class="linkbtn more" data-a="morehist">Show older workouts</button>';
+    return html;
+  }
+
+  /* ---------- render ---------- */
+  function renderLifts() {
+    var names = {};
+    COMMON.forEach(function (n) { names[key(n)] = n; });
+    state.entries.forEach(function (e) { names[key(e.ex)] = e.ex; });
+    var dl = $('lifts');
+    dl.innerHTML = '';
+    Object.keys(names).sort().forEach(function (k) {
+      var o = document.createElement('option');
+      o.value = names[k];
+      dl.appendChild(o);
+    });
+  }
+  function render() {
+    var showWk = !!state.active || !!(ui.summary && state.workouts.some(function (w) { return w.id === ui.summary; }));
+    if (ui.tab === 'workout' && !showWk) ui.tab = 'plans';
+    $('tab-workout').hidden = !showWk;
+    document.querySelectorAll('[data-a="unit"]').forEach(function (b) {
+      b.setAttribute('aria-pressed', String(b.dataset.unit === state.unit));
+    });
+    ['workout', 'plans', 'records', 'history'].forEach(function (t) {
+      var b = $('tab-' + t);
+      b.setAttribute('aria-selected', String(ui.tab === t));
+      b.setAttribute('aria-controls', 'panel');
+      b.innerHTML = t.charAt(0).toUpperCase() + t.slice(1) + (t === 'workout' && state.active ? '<span class="live" title="Workout in progress"></span>' : '');
+    });
+    $('panel').innerHTML = ui.tab === 'workout' ? workoutHTML() : ui.tab === 'plans' ? plansHTML() : ui.tab === 'records' ? recordsHTML() : historyHTML();
+    if (ui.focus) {
+      var el = $('panel').querySelector(ui.focus);
+      if (el) el.focus();
+      ui.focus = null;
+    }
+  }
+
+  /* ---------- actions ---------- */
+  function startWorkout(planId) {
+    var plan = planId ? state.plans.filter(function (p) { return p.id === planId; })[0] : null;
+    state.active = { id: uid(), start: Date.now(), date: today(), exercises: [], targets: {}, plan: plan ? plan.name : null };
+    ui.summary = null; ui.drafts = {}; ui.err = null; ui.newEx = '';
+    if (plan) {
+      plan.exercises.forEach(function (x) {
+        var k = key(x.name);
+        if (state.active.exercises.some(function (n) { return key(n) === k; })) return;
+        state.active.exercises.push(x.name);
+        state.active.targets[k] = { sets: x.sets };
+        prefill(x.name);
+      });
+    }
+    ui.tab = 'workout';
+    persist();
+    ui.focus = plan ? null : '#newex';
+    render();
+    window.scrollTo(0, 0);
+  }
+  function addExercise() {
+    var name = ui.newEx.trim().replace(/\s+/g, ' ');
+    if (!name) { ui.err = { i: -2, msg: '' }; $('newex').focus(); return; }
+    var k = key(name);
+    var known = state.entries.filter(function (e) { return key(e.ex) === k; })[0];
+    if (known) name = known.ex;
+    else COMMON.forEach(function (c) { if (key(c) === k) name = c; });
+    var idx = -1;
+    state.active.exercises.forEach(function (n, i) { if (key(n) === k) idx = i; });
+    if (idx === -1) {
+      state.active.exercises.push(name);
+      idx = state.active.exercises.length - 1;
+      prefill(name);
+    }
+    ui.newEx = ''; ui.err = null;
+    persist();
+    ui.focus = '[data-dw="' + idx + '"]';
+    render();
+  }
+  function addSet(i) {
+    var name = state.active.exercises[i];
+    var d = getDraft(key(name));
+    var w = parseFloat(String(d.w).replace(',', '.'));
+    var rs = String(d.r).trim();
+    var r = parseInt(rs, 10);
+    if (!isFinite(w) || w < 0) { ui.err = { i: i, msg: 'Enter a weight of 0 or more in ' + state.unit + '.' }; ui.focus = '[data-dw="' + i + '"]'; render(); return; }
+    if (!/^\d+$/.test(rs) || r < 1 || r > 100) { ui.err = { i: i, msg: 'Enter reps as a whole number from 1 to 100.' }; ui.focus = '[data-dr="' + i + '"]'; render(); return; }
+    state.entries.push({ id: uid(), ex: name, kg: Math.round(toKg(w) * 10000) / 10000, reps: r, date: state.active.date, ts: Date.now(), wid: state.active.id });
+    ui.err = null;
+    persist();
+    ui.focus = '[data-dr="' + i + '"]';
+    render();
+  }
+  function finishWorkout() {
+    var a = state.active;
+    var n = state.entries.filter(function (e) { return e.wid === a.id; }).length;
+    if (!n) { ui.err = { i: -1, msg: 'Log at least one set before finishing, or discard the workout.' }; render(); return; }
+    state.workouts.push({ id: a.id, date: a.date, start: a.start, end: Date.now(), plan: a.plan || null });
+    state.active = null;
+    ui.summary = a.id; ui.drafts = {}; ui.err = null; ui.armed = null;
+    persist();
+    render();
+    window.scrollTo(0, 0);
+  }
+  function armThen(token, fn) {
+    if (ui.armed === token) { ui.armed = null; fn(); return; }
+    ui.armed = token;
+    render();
+    setTimeout(function () { if (ui.armed === token) { ui.armed = null; render(); } }, 3000);
+  }
+
+  /* ---------- events ---------- */
+  document.addEventListener('click', function (ev) {
+    var t = ev.target.closest('[data-a]');
+    if (!t) return;
+    var a = t.dataset.a;
+    if (a === 'unit') {
+      if (t.dataset.unit === state.unit) return;
+      var old = state.unit;
+      Object.keys(ui.drafts).forEach(function (k) {
+        var v = parseFloat(String(ui.drafts[k].w).replace(',', '.'));
+        if (isFinite(v)) {
+          var kg = old === 'kg' ? v : v / LB;
+          state.unit = t.dataset.unit;
+          ui.drafts[k].w = fmtW(kg);
+          state.unit = old;
+        }
+      });
+      state.unit = t.dataset.unit;
+      persist(); render();
+    } else if (a === 'tab') {
+      ui.tab = t.dataset.tab; ui.err = null; render();
+    } else if (a === 'start') startWorkout(t.dataset.plan);
+    else if (a.indexOf('plan-') === 0) planAction(a, t);
+    else if (a === 'addex') addExercise();
+    else if (a === 'addset') addSet(+t.dataset.i);
+    else if (a === 'finish') finishWorkout();
+    else if (a === 'done') { ui.summary = null; render(); }
+    else if (a === 'rmset') {
+      state.entries = state.entries.filter(function (e) { return e.id !== t.dataset.id; });
+      persist(); render();
+    } else if (a === 'rmex') {
+      state.active.exercises.splice(+t.dataset.i, 1);
+      persist(); render();
+    } else if (a === 'discard') {
+      armThen('discard', function () {
+        var id = state.active.id;
+        state.entries = state.entries.filter(function (e) { return e.wid !== id; });
+        state.active = null; ui.drafts = {}; ui.err = null;
+        persist(); render();
+      });
+    } else if (a === 'sel') { ui.sel = t.dataset.key; render(); }
+    else if (a === 'togglewk') { ui.open[t.dataset.id] = !ui.open[t.dataset.id]; ui.focus = '[data-a="togglewk"][data-id="' + t.dataset.id + '"]'; render(); }
+    else if (a === 'morehist') { ui.histShown += 15; render(); }
+    else if (a === 'delwk') {
+      var id = t.dataset.id;
+      armThen('wk:' + id, function () {
+        state.entries = state.entries.filter(function (e) {
+          return id.indexOf('d:') === 0 ? !(!e.wid && e.date === id.slice(2)) : e.wid !== id;
+        });
+        state.workouts = state.workouts.filter(function (w) { return w.id !== id; });
+        persist(); render();
+      });
+    }
+  });
+
+  document.addEventListener('input', function (ev) {
+    var t = ev.target;
+    if (t.id === 'newex') { ui.newEx = t.value; return; }
+    if (t.id === 'pname' && ui.edit) { ui.edit.name = t.value; return; }
+    if (t.dataset.pe !== undefined && ui.edit) { ui.edit.exercises[+t.dataset.pe][t.dataset.f] = t.value; return; }
+    if (t.dataset.dw !== undefined && state.active) getDraft(key(state.active.exercises[+t.dataset.dw])).w = t.value;
+    else if (t.dataset.dr !== undefined && state.active) getDraft(key(state.active.exercises[+t.dataset.dr])).r = t.value;
+  });
+
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key !== 'Enter') return;
+    var t = ev.target;
+    if (t.id === 'newex') { ev.preventDefault(); addExercise(); }
+    else if (t.dataset && t.dataset.dw !== undefined) { ev.preventDefault(); var r = document.querySelector('[data-dr="' + t.dataset.dw + '"]'); if (r) r.focus(); }
+    else if (t.dataset && t.dataset.dr !== undefined) { ev.preventDefault(); addSet(+t.dataset.dr); }
+  });
+
+  setInterval(function () {
+    var el = $('elapsed');
+    if (el && state.active) el.textContent = fmtDur(Date.now() - state.active.start);
+  }, 1000);
+
+  /* ---------- start ---------- */
+  loadLocal();
+  if (state.active) ui.tab = 'workout';
+  render();
+  initRemote();
+})();
+</script>
+</body>
+</html>
