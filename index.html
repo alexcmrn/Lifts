@@ -245,6 +245,17 @@ nav.tabs button { flex-shrink: 0; white-space: nowrap; }
 .meal { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 9px 0; border-top: 1px solid var(--line); }
 .mn { display: flex; flex-direction: column; min-width: 0; }
 .mname { font: 600 1.3rem/1.15 'Barlow Condensed', sans-serif; }
+.cell { min-height: 60px; }
+.kc { font: 600 .62rem/1 'Barlow Condensed', sans-serif; color: var(--mute); white-space: nowrap; max-width: 100%; overflow: hidden; }
+.kc.over { color: var(--pr); }
+.cell[aria-pressed="true"] .kc:not(.over) { color: var(--bg); opacity: .85; }
+.tbar { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; margin-top: 2px; }
+.tbar i { display: block; height: 100%; background: var(--accent); }
+.tbar i.over { background: var(--pr); }
+.tleft { margin: 4px 0 0; }
+.trow { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 14px 0 14px; }
+.trow label { font-size: .9rem; color: var(--mute); font-weight: 500; }
+.trow input { width: 120px; height: 44px; padding: 0 12px; font: 500 1.1rem 'Barlow', sans-serif; color: var(--ink); background: var(--field); border: 1px solid var(--line); border-radius: 8px; text-align: right; }
 @media (max-width: 420px) { .mform { grid-template-columns: 1fr 1fr; } }
 
 /* plans */
@@ -305,7 +316,7 @@ nav.tabs button[hidden] { display: none; }
     'Romanian deadlift', 'Incline bench press', 'Pull-up', 'Dip', 'Hip thrust', 'Lat pulldown'];
   var REP_TARGETS = [1, 3, 5, 8, 10];
 
-  var state = { entries: [], workouts: [], plans: [], schedule: [], meals: [], active: null, unit: 'kg' };
+  var state = { entries: [], workouts: [], plans: [], schedule: [], meals: [], calTarget: 0, active: null, unit: 'kg' };
   var ui = { tab: 'plans', sel: null, summary: null, drafts: {}, newEx: '', err: null, armed: null, histShown: 15, focus: null, edit: null, planSaved: null, open: {}, month: null, selDay: null, addDay: null, repeat: false, mealDay: null, mealErr: '', mealDraft: { name: '', kcal: '', p: '', c: '', f: '' } };
   var remoteRef = null;
   var writeQueue = Promise.resolve();
@@ -369,6 +380,7 @@ nav.tabs button[hidden] { display: none; }
           state.plans = Array.isArray(d.plans) ? d.plans : [];
           state.schedule = Array.isArray(d.schedule) ? d.schedule : [];
           state.meals = Array.isArray(d.meals) ? d.meals : [];
+          state.calTarget = +d.calTarget > 0 ? +d.calTarget : 0;
           state.active = d.active || null;
           if (d.unit === 'kg' || d.unit === 'lb') state.unit = d.unit;
         }
@@ -384,7 +396,7 @@ nav.tabs button[hidden] { display: none; }
   function persist() {
     saveLocal();
     if (!remoteRef) return;
-    var payload = JSON.parse(JSON.stringify({ entries: state.entries, workouts: state.workouts, plans: state.plans, schedule: state.schedule, meals: state.meals, active: state.active, unit: state.unit }));
+    var payload = JSON.parse(JSON.stringify({ entries: state.entries, workouts: state.workouts, plans: state.plans, schedule: state.schedule, meals: state.meals, calTarget: state.calTarget, active: state.active, unit: state.unit }));
     writeQueue = writeQueue
       .then(function () { return remoteRef.set(payload); })
       .then(function () { setStatus(true); })
@@ -414,6 +426,7 @@ nav.tabs button[hidden] { display: none; }
               state.plans = mergeById(d.plans, state.plans);
               state.schedule = mergeById(d.schedule, state.schedule);
               state.meals = mergeById(d.meals, state.meals);
+              if (+d.calTarget > 0) state.calTarget = +d.calTarget;
               if (!state.active && d.active && !state.workouts.some(function (w) { return w.id === d.active.id; })) state.active = d.active;
               if (d.unit === 'kg' || d.unit === 'lb') state.unit = d.unit;
             }
@@ -867,13 +880,15 @@ nav.tabs button[hidden] { display: none; }
         dots += '<i class="dot ' + (pr ? 'pr' : 'done') + '"></i>';
       });
       for (var j = 0; j < Math.min(pending, 3); j++) dots += '<i class="dot plan"></i>';
-      var hasMeals = mealsOn(d).length > 0;
+      var dayMeals = mealsOn(d);
+      var hasMeals = dayMeals.length > 0;
+      var eaten = hasMeals ? Math.round(mealTotals(dayMeals).kcal) : 0;
       if (hasMeals) dots += '<i class="dot meal"></i>';
       var label = parseD(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' }) +
         (wks.length ? ', ' + wks.length + (wks.length === 1 ? ' workout' : ' workouts') : '') +
         (pending ? ', ' + pending + ' planned' : '') +
-        (hasMeals ? ', meals logged' : '');
-      html += '<button type="button" class="cell' + (d === t0 ? ' today' : '') + '" data-a="cal-sel" data-date="' + d + '" aria-pressed="' + (d === ui.selDay) + '" aria-label="' + esc(label) + '"><span class="n">' + n + '</span><span class="dots">' + dots + '</span></button>';
+        (hasMeals ? ', ' + eaten + (state.calTarget ? ' of ' + state.calTarget : '') + ' calories eaten' : '');
+      html += '<button type="button" class="cell' + (d === t0 ? ' today' : '') + '" data-a="cal-sel" data-date="' + d + '" aria-pressed="' + (d === ui.selDay) + '" aria-label="' + esc(label) + '"><span class="n">' + n + '</span><span class="dots">' + dots + '</span>' + (hasMeals ? '<span class="kc' + (state.calTarget && eaten > state.calTarget ? ' over' : '') + '">' + eaten + (state.calTarget ? '/' + state.calTarget : '') + '</span>' : '') + '</button>';
     }
     html += '</div>';
     return html + dayDetail(ui.selDay, t0, flags);
@@ -939,13 +954,24 @@ nav.tabs button[hidden] { display: none; }
     var html = '<div class="sect">';
     if (list.length) {
       var t = mealTotals(list);
-      html += '<h4>Meals \u00B7 ' + fmtK(t.kcal) + ' kcal</h4><p class="sub" style="margin-bottom:6px">P ' + fmtG(t.p) + ' \u00B7 C ' + fmtG(t.c) + ' \u00B7 F ' + fmtG(t.f) + '</p>' + list.map(mealRow).join('');
+      html += '<h4>Meals \u00B7 ' + fmtK(t.kcal) + (state.calTarget ? ' / ' + fmtK(state.calTarget) : '') + ' kcal</h4><p class="sub" style="margin-bottom:6px">P ' + fmtG(t.p) + ' \u00B7 C ' + fmtG(t.c) + ' \u00B7 F ' + fmtG(t.f) + '</p>' + list.map(mealRow).join('');
     }
     return html + '<button type="button" class="linkbtn addbtn" data-a="meal-goto" data-date="' + d + '">Add meal</button></div>';
   }
   function mfield(id, k, label, wide) {
     return '<div class="field' + (wide ? ' wide' : '') + '"><label for="' + id + '">' + label + '</label><input id="' + id + '" data-md="' + k + '" autocomplete="off"' +
       (k === 'name' ? '' : ' inputmode="decimal"') + ' value="' + esc(ui.mealDraft[k]) + '"></div>';
+  }
+  function targetHTML(eaten) {
+    var tg = state.calTarget;
+    var html = '';
+    if (tg) {
+      var pct = Math.min(100, Math.round(eaten / tg * 100));
+      var diff = Math.round(tg - eaten);
+      html += '<div class="tbar" role="img" aria-label="' + pct + ' percent of daily calorie target"><i class="' + (diff < 0 ? 'over' : '') + '" style="width:' + pct + '%"></i></div>' +
+        '<p class="sub tleft">' + (diff >= 0 ? fmtK(diff) + ' kcal left' : fmtK(-diff) + ' kcal over') + '</p>';
+    }
+    return html + '<div class="trow"><label for="mtarget">Daily calorie target</label><input id="mtarget" inputmode="numeric" autocomplete="off" value="' + (tg || '') + '"></div>';
   }
   function mealsHTML() {
     var t0 = today();
@@ -958,10 +984,11 @@ nav.tabs button[hidden] { display: none; }
       '<button type="button" class="iconbtn" data-a="meal-today">Today</button>' +
       '<button type="button" class="iconbtn" data-a="meal-next" aria-label="Next day">\u203A</button></div></div>';
     html += '<div class="stats">' +
-      '<div class="stat"><span class="num">' + fmtK(tot.kcal) + '</span><span class="l">Calories</span></div>' +
+      '<div class="stat"><span class="num">' + fmtK(tot.kcal) + '</span><span class="l">' + (state.calTarget ? 'of ' + fmtK(state.calTarget) + ' kcal' : 'Calories') + '</span></div>' +
       '<div class="stat"><span class="num">' + fmtG(tot.p) + '</span><span class="l">Protein (g)</span></div>' +
       '<div class="stat"><span class="num">' + fmtG(tot.c) + '</span><span class="l">Carbs (g)</span></div>' +
       '<div class="stat"><span class="num">' + fmtG(tot.f) + '</span><span class="l">Fats (g)</span></div></div>';
+    html += targetHTML(tot.kcal);
     html += '<div class="mform">' + mfield('mn', 'name', 'Meal', true) + mfield('mk', 'kcal', 'Calories') + mfield('mp', 'p', 'Protein (g)') +
       mfield('mc', 'c', 'Carbs (g)') + mfield('mf', 'f', 'Fats (g)') +
       (ui.mealErr ? '<p class="err">' + esc(ui.mealErr) + '</p>' : '') +
@@ -1272,6 +1299,15 @@ nav.tabs button[hidden] { display: none; }
     else if (t.dataset && t.dataset.md !== undefined) { ev.preventDefault(); mealEnter(t); }
     else if (t.dataset && t.dataset.dw !== undefined) { ev.preventDefault(); var r = document.querySelector('[data-dr="' + t.dataset.dw + '"]'); if (r) r.focus(); }
     else if (t.dataset && t.dataset.dr !== undefined) { ev.preventDefault(); addSet(+t.dataset.dr); }
+  });
+
+  document.addEventListener('change', function (ev) {
+    var t = ev.target;
+    if (t.id !== 'mtarget') return;
+    var n = Math.round(Number(String(t.value).trim().replace(',', '.')));
+    state.calTarget = isFinite(n) && n > 0 && n <= 20000 ? n : 0;
+    persist();
+    render();
   });
 
   setInterval(function () {
