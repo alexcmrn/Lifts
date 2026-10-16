@@ -253,6 +253,17 @@ nav.tabs button { flex-shrink: 0; white-space: nowrap; }
 .tbar i { display: block; height: 100%; background: var(--accent); }
 .tbar i.over { background: var(--pr); }
 .tleft { margin: 4px 0 0; }
+.calclink { display: block; margin: -6px 0 14px; }
+.calc { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin: 6px 0 18px; display: flex; flex-direction: column; gap: 12px; }
+.calc h3 { margin: 0; }
+.crow { display: flex; flex-wrap: wrap; gap: 10px; }
+.cfields { display: grid; grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); gap: 10px; }
+.actl { display: flex; flex-direction: column; gap: 6px; }
+.actbtn { text-align: left; display: flex; flex-direction: column; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--field); color: var(--ink); cursor: pointer; font: inherit; }
+.actbtn[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.actbtn .an { font: 600 1.15rem/1.1 'Barlow Condensed', sans-serif; }
+.cstats { grid-template-columns: 1fr 1fr; margin: 0; }
+.calc .secondary { height: 42px; }
 .trow { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 14px 0 14px; }
 .trow label { font-size: .9rem; color: var(--mute); font-weight: 500; }
 .trow input { width: 120px; height: 44px; padding: 0 12px; font: 500 1.1rem 'Barlow', sans-serif; color: var(--ink); background: var(--field); border: 1px solid var(--line); border-radius: 8px; text-align: right; }
@@ -316,8 +327,8 @@ nav.tabs button[hidden] { display: none; }
     'Romanian deadlift', 'Incline bench press', 'Pull-up', 'Dip', 'Hip thrust', 'Lat pulldown'];
   var REP_TARGETS = [1, 3, 5, 8, 10];
 
-  var state = { entries: [], workouts: [], plans: [], schedule: [], meals: [], calTarget: 0, active: null, unit: 'kg' };
-  var ui = { tab: 'plans', sel: null, summary: null, drafts: {}, newEx: '', err: null, armed: null, histShown: 15, focus: null, edit: null, planSaved: null, open: {}, month: null, selDay: null, addDay: null, repeat: false, mealDay: null, mealErr: '', mealDraft: { name: '', kcal: '', p: '', c: '', f: '' } };
+  var state = { entries: [], workouts: [], plans: [], schedule: [], meals: [], calTarget: 0, calc: { sex: 'm', imp: false, act: 2, goal: 'lose', age: null, cm: null, kg: null }, active: null, unit: 'kg' };
+  var ui = { tab: 'plans', sel: null, summary: null, drafts: {}, newEx: '', err: null, armed: null, histShown: 15, focus: null, edit: null, planSaved: null, open: {}, month: null, selDay: null, addDay: null, repeat: false, mealDay: null, mealErr: '', mealDraft: { name: '', kcal: '', p: '', c: '', f: '' }, calcOpen: false, calcShown: false, calcErr: '', calcDraft: { age: '', h: '', hin: '', w: '' } };
   var remoteRef = null;
   var writeQueue = Promise.resolve();
 
@@ -381,6 +392,7 @@ nav.tabs button[hidden] { display: none; }
           state.schedule = Array.isArray(d.schedule) ? d.schedule : [];
           state.meals = Array.isArray(d.meals) ? d.meals : [];
           state.calTarget = +d.calTarget > 0 ? +d.calTarget : 0;
+          if (d.calc && typeof d.calc === 'object') state.calc = Object.assign(state.calc, d.calc);
           state.active = d.active || null;
           if (d.unit === 'kg' || d.unit === 'lb') state.unit = d.unit;
         }
@@ -396,7 +408,7 @@ nav.tabs button[hidden] { display: none; }
   function persist() {
     saveLocal();
     if (!remoteRef) return;
-    var payload = JSON.parse(JSON.stringify({ entries: state.entries, workouts: state.workouts, plans: state.plans, schedule: state.schedule, meals: state.meals, calTarget: state.calTarget, active: state.active, unit: state.unit }));
+    var payload = JSON.parse(JSON.stringify({ entries: state.entries, workouts: state.workouts, plans: state.plans, schedule: state.schedule, meals: state.meals, calTarget: state.calTarget, calc: state.calc, active: state.active, unit: state.unit }));
     writeQueue = writeQueue
       .then(function () { return remoteRef.set(payload); })
       .then(function () { setStatus(true); })
@@ -427,6 +439,7 @@ nav.tabs button[hidden] { display: none; }
               state.schedule = mergeById(d.schedule, state.schedule);
               state.meals = mergeById(d.meals, state.meals);
               if (+d.calTarget > 0) state.calTarget = +d.calTarget;
+              if (d.calc && typeof d.calc === 'object') state.calc = Object.assign(state.calc, d.calc);
               if (!state.active && d.active && !state.workouts.some(function (w) { return w.id === d.active.id; })) state.active = d.active;
               if (d.unit === 'kg' || d.unit === 'lb') state.unit = d.unit;
             }
@@ -962,6 +975,123 @@ nav.tabs button[hidden] { display: none; }
     return '<div class="field' + (wide ? ' wide' : '') + '"><label for="' + id + '">' + label + '</label><input id="' + id + '" data-md="' + k + '" autocomplete="off"' +
       (k === 'name' ? '' : ' inputmode="decimal"') + ' value="' + esc(ui.mealDraft[k]) + '"></div>';
   }
+  /* Mifflin-St Jeor calorie calculator */
+  var ACT = [['Sedentary', 'Desk job, little exercise', 1.2], ['Lightly active', '1 to 3 workouts a week', 1.375],
+    ['Moderately active', '3 to 5 workouts a week', 1.55], ['Very active', '6 to 7 workouts a week', 1.725],
+    ['Extremely active', 'Hard training plus a physical job', 1.9]];
+  function calcInitDrafts() {
+    var c = state.calc;
+    ui.calcDraft = { age: c.age ? String(c.age) : '', h: '', hin: '', w: '' };
+    if (c.cm) {
+      if (c.imp) { var ti = Math.round(c.cm / 2.54); ui.calcDraft.h = String(Math.floor(ti / 12)); ui.calcDraft.hin = String(ti % 12); }
+      else ui.calcDraft.h = String(Math.round(c.cm));
+    }
+    if (c.kg) ui.calcDraft.w = c.imp ? String(+(c.kg * LB).toFixed(1)) : String(+c.kg.toFixed(1));
+  }
+  function calcParse() {
+    var d = ui.calcDraft, c = state.calc;
+    var age = Number(d.age), w = Number(d.w);
+    var cm = c.imp ? (Number(d.h || 0) * 12 + Number(d.hin || 0)) * 2.54 : Number(d.h);
+    var kg = c.imp ? w / LB : w;
+    if (!(age >= 18 && age <= 100)) return { err: 'This calculator is for adults aged 18 to 100.' };
+    if (!(cm >= 100 && cm <= 250)) return { err: 'Check your height.' };
+    if (!(kg >= 30 && kg <= 300)) return { err: 'Check your weight.' };
+    return { age: Math.round(age), cm: cm, kg: kg };
+  }
+  function calcPlans(tdee) {
+    var c = state.calc, imp = c.imp;
+    var perUnit = imp ? 3500 : 7700;
+    var rates = c.goal === 'lose' ? (imp ? [0.5, 1, 1.5, 2] : [0.25, 0.5, 0.75, 1]) : (imp ? [0.5, 1, 1.5] : [0.25, 0.5, 0.75]);
+    var floor = c.sex === 'm' ? 1500 : 1200;
+    var m = Math.round(tdee / 10) * 10;
+    var out = [];
+    rates.forEach(function (r) {
+      var delta = r * perUnit / 7;
+      var kcal = Math.round((c.goal === 'lose' ? tdee - delta : tdee + delta) / 10) * 10;
+      var limited = false;
+      if (c.goal === 'lose' && kcal < floor) { kcal = floor; limited = true; }
+      if (limited && out.length && out[out.length - 1].limited) return;
+      out.push({ rate: r, unit: imp ? 'lb' : 'kg', kcal: kcal, diff: Math.abs(kcal - m), limited: limited });
+    });
+    return out;
+  }
+  function calcHTML() {
+    var c = state.calc, d = ui.calcDraft;
+    function seg(aria, act, opts, cur) {
+      return '<div class="unit" role="group" aria-label="' + aria + '">' + opts.map(function (o) {
+        return '<button type="button" data-a="' + act + '" data-v="' + o[0] + '" aria-pressed="' + (String(cur) === String(o[0])) + '">' + o[1] + '</button>';
+      }).join('') + '</div>';
+    }
+    function f(id, k, label) {
+      return '<div class="field"><label for="' + id + '">' + label + '</label><input id="' + id + '" data-cd="' + k + '" inputmode="decimal" autocomplete="off" value="' + esc(d[k]) + '"></div>';
+    }
+    var html = '<div class="calc"><h3>Calorie calculator</h3><div class="crow">' +
+      seg('Sex', 'calc-sex', [['m', 'Male'], ['f', 'Female']], c.sex) +
+      seg('Units', 'calc-units', [['metric', 'kg, cm'], ['imperial', 'lb, ft']], c.imp ? 'imperial' : 'metric') + '</div>' +
+      '<div class="cfields">' + f('cage', 'age', 'Age') +
+      (c.imp ? f('chf', 'h', 'Height (ft)') + f('chi', 'hin', 'Height (in)') : f('chc', 'h', 'Height (cm)')) +
+      f('cwt', 'w', 'Weight (' + (c.imp ? 'lb' : 'kg') + ')') + '</div>' +
+      '<div class="actl" role="group" aria-label="Activity level">' + ACT.map(function (a, i) {
+        return '<button type="button" class="actbtn" data-a="calc-act" data-v="' + i + '" aria-pressed="' + (c.act === i) + '"><span class="an">' + a[0] + '</span><span class="sub">' + a[1] + '</span></button>';
+      }).join('') + '</div>' +
+      seg('Goal', 'calc-goal', [['lose', 'Lose weight'], ['maintain', 'Maintain'], ['gain', 'Gain weight']], c.goal) +
+      (ui.calcErr ? '<p class="err" style="margin:0">' + esc(ui.calcErr) + '</p>' : '') +
+      '<button type="button" class="primary" data-a="calc-run">Calculate</button>';
+    if (ui.calcShown) {
+      var p = calcParse();
+      if (!p.err) {
+        var bmr = 10 * p.kg + 6.25 * p.cm - 5 * p.age + (c.sex === 'm' ? 5 : -161);
+        var tdee = bmr * ACT[c.act][2];
+        var m = Math.round(tdee / 10) * 10;
+        html += '<div class="stats cstats"><div class="stat"><span class="num">' + fmtK(bmr) + '</span><span class="l">BMR (kcal)</span></div>' +
+          '<div class="stat"><span class="num">' + fmtK(m) + '</span><span class="l">Maintenance (kcal)</span></div></div>';
+        function row(title, sub, kcal) {
+          return '<div class="meal"><div class="mn"><span class="mname">' + esc(title) + '</span><span class="sub">' + esc(sub) + '</span></div>' +
+            '<button type="button" class="secondary" data-a="calc-use" data-kcal="' + kcal + '">Use</button></div>';
+        }
+        if (c.goal === 'maintain') {
+          html += row('Maintain weight', fmtK(m) + ' kcal a day', m);
+        } else {
+          calcPlans(tdee).forEach(function (pl) {
+            html += row((c.goal === 'lose' ? 'Lose ' : 'Gain ') + pl.rate + ' ' + pl.unit + ' a week',
+              fmtK(pl.kcal) + ' kcal a day \u00B7 ' + fmtK(pl.diff) + (c.goal === 'lose' ? ' below' : ' above') + ' maintenance' +
+              (pl.limited ? ' \u00B7 lowest level this calculator recommends' : ''), pl.kcal);
+          });
+        }
+        html += '<p class="sub">Estimates only, not medical advice.</p>';
+      }
+    }
+    return html + '</div>';
+  }
+  function calcAction(a, t) {
+    var c = state.calc, v = t.dataset.v;
+    if (a === 'calc-toggle') {
+      ui.calcOpen = !ui.calcOpen; ui.calcShown = false; ui.calcErr = '';
+      if (ui.calcOpen) { calcInitDrafts(); ui.focus = '#cage'; }
+    } else if (a === 'calc-sex') { c.sex = v; persist(); }
+    else if (a === 'calc-units') {
+      var want = v === 'imperial';
+      if (want !== c.imp) {
+        var p = calcParse();
+        c.imp = want;
+        if (!p.err) { c.age = p.age; c.cm = p.cm; c.kg = p.kg; calcInitDrafts(); }
+        else { ui.calcDraft.h = ''; ui.calcDraft.hin = ''; ui.calcDraft.w = ''; }
+      }
+      persist();
+    } else if (a === 'calc-act') { c.act = +v; persist(); }
+    else if (a === 'calc-goal') { c.goal = v; persist(); }
+    else if (a === 'calc-run') {
+      var q = calcParse();
+      if (q.err) { ui.calcErr = q.err; ui.calcShown = false; }
+      else { ui.calcErr = ''; c.age = q.age; c.cm = q.cm; c.kg = q.kg; ui.calcShown = true; persist(); }
+    } else if (a === 'calc-use') {
+      state.calTarget = Math.round(+t.dataset.kcal);
+      ui.calcOpen = false; ui.calcShown = false;
+      persist();
+    }
+    render();
+  }
+
   function targetHTML(eaten) {
     var tg = state.calTarget;
     var html = '';
@@ -971,7 +1101,7 @@ nav.tabs button[hidden] { display: none; }
       html += '<div class="tbar" role="img" aria-label="' + pct + ' percent of daily calorie target"><i class="' + (diff < 0 ? 'over' : '') + '" style="width:' + pct + '%"></i></div>' +
         '<p class="sub tleft">' + (diff >= 0 ? fmtK(diff) + ' kcal left' : fmtK(-diff) + ' kcal over') + '</p>';
     }
-    return html + '<div class="trow"><label for="mtarget">Daily calorie target</label><input id="mtarget" inputmode="numeric" autocomplete="off" value="' + (tg || '') + '"></div>';
+    return html + '<div class="trow"><label for="mtarget">Daily calorie target</label><input id="mtarget" inputmode="numeric" autocomplete="off" value="' + (tg || '') + '"></div><button type="button" class="linkbtn calclink" data-a="calc-toggle">' + (ui.calcOpen ? 'Close calculator' : 'Work out my target') + '</button>';
   }
   function mealsHTML() {
     var t0 = today();
@@ -988,7 +1118,7 @@ nav.tabs button[hidden] { display: none; }
       '<div class="stat"><span class="num">' + fmtG(tot.p) + '</span><span class="l">Protein (g)</span></div>' +
       '<div class="stat"><span class="num">' + fmtG(tot.c) + '</span><span class="l">Carbs (g)</span></div>' +
       '<div class="stat"><span class="num">' + fmtG(tot.f) + '</span><span class="l">Fats (g)</span></div></div>';
-    html += targetHTML(tot.kcal);
+    html += targetHTML(tot.kcal) + (ui.calcOpen ? calcHTML() : '');
     html += '<div class="mform">' + mfield('mn', 'name', 'Meal', true) + mfield('mk', 'kcal', 'Calories') + mfield('mp', 'p', 'Protein (g)') +
       mfield('mc', 'c', 'Carbs (g)') + mfield('mf', 'f', 'Fats (g)') +
       (ui.mealErr ? '<p class="err">' + esc(ui.mealErr) + '</p>' : '') +
@@ -1247,6 +1377,7 @@ nav.tabs button[hidden] { display: none; }
     } else if (a === 'tab') {
       ui.tab = t.dataset.tab; ui.err = null; render();
     } else if (a === 'start') startWorkout(t.dataset.plan);
+    else if (a.indexOf('calc-') === 0) calcAction(a, t);
     else if (a.indexOf('meal-') === 0) mealAction(a, t);
     else if (a.indexOf('cal-') === 0) calAction(a, t);
     else if (a.indexOf('plan-') === 0) planAction(a, t);
@@ -1284,6 +1415,7 @@ nav.tabs button[hidden] { display: none; }
 
   document.addEventListener('input', function (ev) {
     var t = ev.target;
+    if (t.dataset.cd !== undefined) { ui.calcDraft[t.dataset.cd] = t.value; return; }
     if (t.dataset.md !== undefined) { ui.mealDraft[t.dataset.md] = t.value; return; }
     if (t.id === 'newex') { ui.newEx = t.value; return; }
     if (t.id === 'pname' && ui.edit) { ui.edit.name = t.value; return; }
@@ -1296,6 +1428,7 @@ nav.tabs button[hidden] { display: none; }
     if (ev.key !== 'Enter') return;
     var t = ev.target;
     if (t.id === 'newex') { ev.preventDefault(); addExercise(); }
+    else if (t.dataset && t.dataset.cd !== undefined) { ev.preventDefault(); calcAction('calc-run', t); }
     else if (t.dataset && t.dataset.md !== undefined) { ev.preventDefault(); mealEnter(t); }
     else if (t.dataset && t.dataset.dw !== undefined) { ev.preventDefault(); var r = document.querySelector('[data-dr="' + t.dataset.dw + '"]'); if (r) r.focus(); }
     else if (t.dataset && t.dataset.dr !== undefined) { ev.preventDefault(); addSet(+t.dataset.dr); }
