@@ -264,6 +264,16 @@ nav.tabs button { flex-shrink: 0; white-space: nowrap; }
 .actbtn .an { font: 600 1.15rem/1.1 'Barlow Condensed', sans-serif; }
 .cstats { grid-template-columns: 1fr 1fr; margin: 0; }
 .calc .secondary { height: 42px; }
+.scanbox { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin: 4px 0 12px; display: flex; flex-direction: column; gap: 8px; }
+.sgrow { display: flex; gap: 12px; align-items: flex-end; }
+.sgrow .field { flex: 1; }
+.scanov { position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, .6); display: flex; align-items: flex-end; justify-content: center; padding-top: env(safe-area-inset-top, 0px); }
+.scanov[hidden] { display: none; }
+.scansheet { background: var(--surface); color: var(--ink); width: 100%; max-width: 560px; max-height: 100%; overflow: auto; border-radius: 16px 16px 0 0; padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 12px; }
+.scansheet h3 { margin: 0; }
+.scanvid { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: #000; border-radius: 10px; }
+.scanman { display: flex; gap: 10px; align-items: flex-end; }
+.scanman .field { flex: 1; }
 .trow { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 14px 0 14px; }
 .trow label { font-size: .9rem; color: var(--mute); font-weight: 500; }
 .trow input { width: 120px; height: 44px; padding: 0 12px; font: 500 1.1rem 'Barlow', sans-serif; color: var(--ink); background: var(--field); border: 1px solid var(--line); border-radius: 8px; text-align: right; }
@@ -328,7 +338,7 @@ nav.tabs button[hidden] { display: none; }
   var REP_TARGETS = [1, 3, 5, 8, 10];
 
   var state = { entries: [], workouts: [], plans: [], schedule: [], meals: [], calTarget: 0, calc: { sex: 'm', imp: false, act: 2, goal: 'lose', age: null, cm: null, kg: null }, active: null, unit: 'kg' };
-  var ui = { tab: 'plans', sel: null, summary: null, drafts: {}, newEx: '', err: null, armed: null, histShown: 15, focus: null, edit: null, planSaved: null, open: {}, month: null, selDay: null, addDay: null, repeat: false, mealDay: null, mealErr: '', mealDraft: { name: '', kcal: '', p: '', c: '', f: '' }, calcOpen: false, calcShown: false, calcErr: '', calcDraft: { age: '', h: '', hin: '', w: '' } };
+  var ui = { tab: 'plans', sel: null, summary: null, drafts: {}, newEx: '', err: null, armed: null, histShown: 15, focus: null, edit: null, planSaved: null, open: {}, month: null, selDay: null, addDay: null, repeat: false, mealDay: null, mealErr: '', mealDraft: { name: '', kcal: '', p: '', c: '', f: '' }, calcOpen: false, calcShown: false, calcErr: '', calcDraft: { age: '', h: '', hin: '', w: '' }, scan: null };
   var remoteRef = null;
   var writeQueue = Promise.resolve();
 
@@ -975,6 +985,220 @@ nav.tabs button[hidden] { display: none; }
     return '<div class="field' + (wide ? ' wide' : '') + '"><label for="' + id + '">' + label + '</label><input id="' + id + '" data-md="' + k + '" autocomplete="off"' +
       (k === 'name' ? '' : ' inputmode="decimal"') + ' value="' + esc(ui.mealDraft[k]) + '"></div>';
   }
+  /* Barcode scanner (Open Food Facts) */
+  var OFF_URL = 'https://world.openfoodfacts.org/api/v2/product/';
+  var ZX_URLS = [
+    'https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/umd/zxing-browser.min.js',
+    'https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js'
+  ];
+  var scanner = { el: null, stream: null, timer: null, reader: null, controls: null, busy: false, looking: false, lastCode: '', lastAt: 0 };
+
+  function scanStat(msg) { var s = $('scanstat'); if (s) s.textContent = msg; }
+  function scanStopCamera() {
+    if (scanner.timer) { clearInterval(scanner.timer); scanner.timer = null; }
+    if (scanner.controls && scanner.controls.stop) { try { scanner.controls.stop(); } catch (e) { /* ignore */ } }
+    scanner.controls = null;
+    if (scanner.reader && scanner.reader.reset) { try { scanner.reader.reset(); } catch (e) { /* ignore */ } }
+    scanner.reader = null;
+    if (scanner.stream) { scanner.stream.getTracks().forEach(function (tr) { tr.stop(); }); scanner.stream = null; }
+    var v = $('scanvid');
+    if (v) v.srcObject = null;
+  }
+  function scanClose() {
+    scanStopCamera();
+    scanner.looking = false;
+    if (scanner.el) scanner.el.hidden = true;
+    document.body.style.overflow = '';
+  }
+  function scanOverlay() {
+    if (scanner.el) return scanner.el;
+    var el = document.createElement('div');
+    el.className = 'scanov';
+    el.hidden = true;
+    el.setAttribute('role', 'dialog');
+    el.setAttribute('aria-modal', 'true');
+    el.setAttribute('aria-label', 'Scan barcode');
+    el.innerHTML = '<div class="scansheet"><h3>Scan barcode</h3><video id="scanvid" class="scanvid" playsinline muted></video>' +
+      '<p class="sub" id="scanstat" aria-live="polite"></p>' +
+      '<div class="scanman"><div class="field"><label for="scancode">Or type the barcode number</label><input id="scancode" inputmode="numeric" autocomplete="off"></div>' +
+      '<button type="button" class="secondary" id="scango">Look up</button></div>' +
+      '<button type="button" class="linkbtn" id="scanx">Cancel</button></div>';
+    document.body.appendChild(el);
+    scanner.el = el;
+    $('scanx').addEventListener('click', scanClose);
+    $('scango').addEventListener('click', function () { scanLookup($('scancode').value); });
+    $('scancode').addEventListener('keydown', function (ev) {
+      if (ev.key === 'Enter') { ev.preventDefault(); scanLookup($('scancode').value); }
+    });
+    el.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') scanClose(); });
+    return el;
+  }
+  function scanDenied() {
+    scanStat('Camera access was blocked or is unavailable. Allow it in your browser settings, or type the barcode number instead.');
+  }
+  function scanLoadZXing(cb) {
+    function reader() {
+      return (window.ZXingBrowser && window.ZXingBrowser.BrowserMultiFormatReader) ||
+        (window.ZXing && window.ZXing.BrowserMultiFormatReader) || null;
+    }
+    if (reader()) { cb(reader()); return; }
+    var i = 0;
+    (function next() {
+      if (i >= ZX_URLS.length) { cb(null); return; }
+      var s = document.createElement('script');
+      s.src = ZX_URLS[i++];
+      s.onload = function () { var r = reader(); if (r) cb(r); else next(); };
+      s.onerror = next;
+      document.head.appendChild(s);
+    })();
+  }
+  function scanStartCamera() {
+    var md = navigator.mediaDevices;
+    if (!md || !md.getUserMedia) { scanStat('The camera is not available here. Type the barcode number instead.'); return; }
+    var constraints = { video: { facingMode: { ideal: 'environment' } }, audio: false };
+    var det = null;
+    if ('BarcodeDetector' in window) {
+      try { det = new window.BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e'] }); } catch (e) { det = null; }
+    }
+    if (det) {
+      md.getUserMedia(constraints).then(function (stream) {
+        if (scanner.el.hidden) { stream.getTracks().forEach(function (tr) { tr.stop(); }); return; }
+        scanner.stream = stream;
+        var v = $('scanvid');
+        v.srcObject = stream;
+        var pl = v.play();
+        if (pl && pl.catch) pl.catch(function () {});
+        scanStat('Point the camera at the barcode.');
+        scanner.timer = setInterval(function () {
+          if (scanner.busy || v.readyState < 2) return;
+          scanner.busy = true;
+          det.detect(v).then(function (r) {
+            scanner.busy = false;
+            if (r && r.length) scanOnCode(r[0].rawValue);
+          }).catch(function () { scanner.busy = false; });
+        }, 300);
+      }).catch(scanDenied);
+      return;
+    }
+    scanLoadZXing(function (Reader) {
+      if (!Reader) { scanStat('Could not load the scanner. Type the barcode number instead.'); return; }
+      if (scanner.el.hidden) return;
+      try {
+        scanner.reader = new Reader();
+        var ret = scanner.reader.decodeFromConstraints(constraints, $('scanvid'), function (result) {
+          if (result) scanOnCode(result.getText());
+        });
+        Promise.resolve(ret).then(function (ctl) {
+          if (scanner.el.hidden) { if (ctl && ctl.stop) ctl.stop(); return; }
+          scanner.controls = ctl;
+          scanStat('Point the camera at the barcode.');
+        }).catch(scanDenied);
+      } catch (e) { scanDenied(); }
+    });
+  }
+  function scanOpen() {
+    scanOverlay();
+    scanner.el.hidden = false;
+    scanner.looking = false;
+    scanner.lastCode = '';
+    document.body.style.overflow = 'hidden';
+    $('scancode').value = '';
+    scanStat('Starting the camera...');
+    scanStartCamera();
+    $('scanx').focus();
+  }
+  function scanOnCode(raw) {
+    var code = String(raw || '').replace(/\D/g, '');
+    if (!code || scanner.looking) return;
+    if (code === scanner.lastCode && Date.now() - scanner.lastAt < 5000) return;
+    scanner.lastCode = code;
+    scanner.lastAt = Date.now();
+    scanLookup(code);
+  }
+  function scanLookup(raw) {
+    var code = String(raw || '').replace(/\D/g, '');
+    if (code.length < 8 || code.length > 14) { scanStat('Enter the 8 to 14 digit number printed under the barcode.'); return; }
+    if (scanner.looking) return;
+    scanner.looking = true;
+    scanStat('Looking up ' + code + '...');
+    var ctl = window.AbortController ? new window.AbortController() : null;
+    var to = setTimeout(function () { if (ctl) ctl.abort(); }, 10000);
+    fetch(OFF_URL + code + '.json?fields=code,product_name,brands,serving_size,serving_quantity,nutriments', ctl ? { signal: ctl.signal } : undefined)
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        clearTimeout(to);
+        scanner.looking = false;
+        if (!data || data.status !== 1 || !data.product) {
+          scanStat('That barcode is not in the food database. Try another, or cancel and enter it by hand.');
+          return;
+        }
+        scanApply(data.product);
+      })
+      .catch(function () {
+        clearTimeout(to);
+        scanner.looking = false;
+        scanStat('Could not reach the food database. Check your connection, or cancel and enter it by hand.');
+      });
+  }
+  function scanNum(x) {
+    if (x === '' || x === null || x === undefined) return null;
+    x = Number(x);
+    return isFinite(x) && x >= 0 ? x : null;
+  }
+  function scanApply(p) {
+    var n = p.nutriments || {};
+    var pr = scanNum(n['proteins_100g']), cb = scanNum(n['carbohydrates_100g']), ft = scanNum(n['fat_100g']);
+    var kc = scanNum(n['energy-kcal_100g']);
+    if (kc === null && scanNum(n['energy_100g']) !== null) kc = Number(n['energy_100g']) / 4.184;
+    if (kc === null && (pr !== null || cb !== null || ft !== null)) kc = 4 * (pr || 0) + 4 * (cb || 0) + 9 * (ft || 0);
+    var brand = String(p.brands || '').split(',')[0].trim();
+    var name = String(p.product_name || '').trim() || 'Scanned product';
+    if (brand && name.toLowerCase().indexOf(brand.toLowerCase()) === -1) name += ' (' + brand + ')';
+    scanClose();
+    ui.mealDraft.name = name;
+    if (kc === null) {
+      ui.scan = null;
+      ui.mealErr = 'That product has no nutrition info on file. Enter the numbers by hand.';
+      ui.focus = '#mk';
+      render();
+      return;
+    }
+    var serving = scanNum(p.serving_quantity);
+    ui.scan = { name: name, per: { kcal: kc, p: pr || 0, c: cb || 0, f: ft || 0 }, grams: serving && serving > 0 ? +serving.toFixed(1) : 100 };
+    ui.mealErr = '';
+    applyScan();
+    ui.focus = '#sg';
+    render();
+  }
+  function applyScan() {
+    var s = ui.scan;
+    var g = Number(String(s.grams).replace(',', '.'));
+    if (!isFinite(g) || g < 0) return;
+    var k = g / 100;
+    ui.mealDraft.kcal = String(Math.round(s.per.kcal * k));
+    ui.mealDraft.p = String(+(s.per.p * k).toFixed(1));
+    ui.mealDraft.c = String(+(s.per.c * k).toFixed(1));
+    ui.mealDraft.f = String(+(s.per.f * k).toFixed(1));
+    var ids = { kcal: 'mk', p: 'mp', c: 'mc', f: 'mf' };
+    Object.keys(ids).forEach(function (f) {
+      var inp = document.getElementById(ids[f]);
+      if (inp) inp.value = ui.mealDraft[f];
+    });
+  }
+  function scanBoxHTML() {
+    var s = ui.scan;
+    if (!s) return '';
+    return '<div class="scanbox"><div class="mn"><span class="mname">' + esc(s.name) + '</span><span class="sub">Per 100 g: ' +
+      fmtK(s.per.kcal) + ' kcal \u00B7 P ' + fmtG(s.per.p) + ' \u00B7 C ' + fmtG(s.per.c) + ' \u00B7 F ' + fmtG(s.per.f) + '</span></div>' +
+      '<div class="sgrow"><div class="field"><label for="sg">Amount (g or ml)</label><input id="sg" data-sg="1" inputmode="decimal" autocomplete="off" value="' + esc(String(s.grams)) + '"></div>' +
+      '<button type="button" class="linkbtn mute" data-a="scan-clear">Clear</button></div>' +
+      '<p class="sub">Data from Open Food Facts</p></div>';
+  }
+  function scanAction(a) {
+    if (a === 'scan-open') { scanOpen(); return; }
+    if (a === 'scan-clear') { ui.scan = null; render(); }
+  }
+
   /* Mifflin-St Jeor calorie calculator */
   var ACT = [['Sedentary', 'Desk job, little exercise', 1.2], ['Lightly active', '1 to 3 workouts a week', 1.375],
     ['Moderately active', '3 to 5 workouts a week', 1.55], ['Very active', '6 to 7 workouts a week', 1.725],
@@ -1119,7 +1343,7 @@ nav.tabs button[hidden] { display: none; }
       '<div class="stat"><span class="num">' + fmtG(tot.c) + '</span><span class="l">Carbs (g)</span></div>' +
       '<div class="stat"><span class="num">' + fmtG(tot.f) + '</span><span class="l">Fats (g)</span></div></div>';
     html += targetHTML(tot.kcal) + (ui.calcOpen ? calcHTML() : '');
-    html += '<div class="mform">' + mfield('mn', 'name', 'Meal', true) + mfield('mk', 'kcal', 'Calories') + mfield('mp', 'p', 'Protein (g)') +
+    html += scanBoxHTML() + '<div class="mform"><button type="button" class="secondary wide" data-a="scan-open">Scan barcode</button>' + mfield('mn', 'name', 'Meal', true) + mfield('mk', 'kcal', 'Calories') + mfield('mp', 'p', 'Protein (g)') +
       mfield('mc', 'c', 'Carbs (g)') + mfield('mf', 'f', 'Fats (g)') +
       (ui.mealErr ? '<p class="err">' + esc(ui.mealErr) + '</p>' : '') +
       '<button type="button" class="submit" data-a="meal-add">Add meal</button></div>';
@@ -1134,6 +1358,7 @@ nav.tabs button[hidden] { display: none; }
     if (isNaN(v.kcal) || isNaN(v.p) || isNaN(v.c) || isNaN(v.f)) { ui.mealErr = 'Calories and macros need to be numbers of 0 or more.'; render(); return; }
     state.meals.push({ id: uid(), date: ui.mealDay || today(), name: name, kcal: v.kcal, p: v.p, c: v.c, f: v.f, ts: Date.now() });
     ui.mealDraft = { name: '', kcal: '', p: '', c: '', f: '' };
+    ui.scan = null;
     ui.mealErr = '';
     persist();
     ui.focus = '#mn';
@@ -1377,6 +1602,7 @@ nav.tabs button[hidden] { display: none; }
     } else if (a === 'tab') {
       ui.tab = t.dataset.tab; ui.err = null; render();
     } else if (a === 'start') startWorkout(t.dataset.plan);
+    else if (a.indexOf('scan-') === 0) scanAction(a);
     else if (a.indexOf('calc-') === 0) calcAction(a, t);
     else if (a.indexOf('meal-') === 0) mealAction(a, t);
     else if (a.indexOf('cal-') === 0) calAction(a, t);
@@ -1415,6 +1641,7 @@ nav.tabs button[hidden] { display: none; }
 
   document.addEventListener('input', function (ev) {
     var t = ev.target;
+    if (t.dataset.sg !== undefined && ui.scan) { ui.scan.grams = t.value; applyScan(); return; }
     if (t.dataset.cd !== undefined) { ui.calcDraft[t.dataset.cd] = t.value; return; }
     if (t.dataset.md !== undefined) { ui.mealDraft[t.dataset.md] = t.value; return; }
     if (t.id === 'newex') { ui.newEx = t.value; return; }
