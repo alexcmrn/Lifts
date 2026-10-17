@@ -434,6 +434,10 @@ nav.tabs button[hidden] { display: none; }
 .syncerr { color: var(--pr); margin: 0 0 12px; font-weight: 500; }
 #notice:not(:empty) { margin-bottom: 16px; }
 #acct { align-self: flex-end; }
+#foot { margin-top: 40px; text-align: center; }
+#foot .card { text-align: left; }
+.delbtn { background: var(--pr); color: var(--pr-ink); }
+.delbtn:disabled { opacity: .45; cursor: default; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -459,6 +463,7 @@ nav.tabs button[hidden] { display: none; }
 
   <div id="notice"></div>
   <main id="panel" role="tabpanel"></main>
+  <div id="foot"></div>
   </div>
 </div>
 
@@ -888,9 +893,41 @@ nav.tabs button[hidden] { display: none; }
     else if (a === 'auth-out') {
       if (sb) sb.auth.signOut({ scope: 'local' }).then(function () { if (user) resetAll(); });
     } else if (a === 'auth-retry') { var u = user; user = null; if (u) startSession(u); }
+    else if (a === 'auth-delask') { ui.delOpen = true; ui.delText = ''; ui.delErr = ''; render(); var di = $('del-confirm'); if (di) { di.focus(); di.scrollIntoView({ block: 'center' }); } }
+    else if (a === 'auth-delcancel') { ui.delOpen = false; ui.delText = ''; ui.delErr = ''; render(); }
+    else if (a === 'auth-delgo') deleteAccount();
     else if (a === 'auth-import') { importLegacy(); render(); }
     else if (a === 'auth-skipimport') { ui.importOffer = null; var n = $('notice'); if (n) n.innerHTML = ''; }
   }
+  /* ---- deleting an account (runs the delete_my_account function in Supabase) ---- */
+  function footHTML() {
+    if (!ui.delOpen) return '<button type="button" class="linkbtn mute" data-a="auth-delask">Delete account</button>';
+    return '<div class="card"><h3>Delete your account?</h3><p class="sub" style="margin:4px 0 12px">This permanently deletes your login and everything saved: workouts, plans, meals, records and targets. It cannot be undone.</p>' +
+      '<div class="field"><label for="del-confirm">Type DELETE to confirm</label><input id="del-confirm" autocomplete="off" autocapitalize="characters" value="' + esc(ui.delText || '') + '"></div>' +
+      (ui.delErr ? '<p class="err">' + esc(ui.delErr) + '</p>' : '') +
+      '<div class="benchbtns" style="margin-top:12px"><button type="button" class="primary delbtn" id="del-go" data-a="auth-delgo"' +
+      ((ui.delText || '').trim().toUpperCase() === 'DELETE' && !ui.delBusy ? '' : ' disabled') + '>' + (ui.delBusy ? 'Deleting...' : 'Delete everything') + '</button>' +
+      '<button type="button" class="secondary" data-a="auth-delcancel">Cancel</button></div></div>';
+  }
+  function deleteAccount() {
+    if (!sb || !user || ui.delBusy || (ui.delText || '').trim().toUpperCase() !== 'DELETE') return;
+    ui.delBusy = true; ui.delErr = '';
+    render();
+    writeQueue.then(function () { return sb.rpc('delete_my_account'); }).then(function (r) {
+      if (r && r.error) throw r.error;
+      try { localStorage.removeItem(activeKey()); } catch (e) { /* ignore */ }
+      state.loaded = false;
+      auth.msg = 'Your account and all its data have been deleted.';
+      auth.email = '';
+      var done = function () { if (user) resetAll(); };
+      sb.auth.signOut({ scope: 'local' }).then(done, done);
+    }).catch(function (e) {
+      ui.delBusy = false;
+      ui.delErr = /does not exist|function/i.test((e && e.message) || '') ? 'Account deletion is not set up in Supabase yet. Run the delete_my_account SQL first.' : friendly(e);
+      render();
+    });
+  }
+
   function renderAuth() {
     var h = '<div class="authcard">';
     if (auth.fatal) h += '<h2>Lifts</h2><p class="err">' + esc(auth.fatal) + '</p>';
@@ -2341,6 +2378,8 @@ nav.tabs button[hidden] { display: none; }
     if (!signedIn) { renderAuth(); return; }
     var nt = $('notice');
     if (nt) nt.innerHTML = noticeHTML();
+    var ft = $('foot');
+    if (ft) { var fh = footHTML(); if (ui.footHtml !== fh) { ft.innerHTML = fh; ui.footHtml = fh; } }
     var showWk = !!state.active || !!(ui.summary && state.workouts.some(function (w) { return w.id === ui.summary; }));
     if (ui.tab === 'workout' && !showWk) ui.tab = 'plans';
     $('tab-workout').hidden = !showWk;
@@ -2541,6 +2580,7 @@ nav.tabs button[hidden] { display: none; }
   document.addEventListener('input', function (ev) {
     var t = ev.target;
     if (t.dataset && t.dataset.au !== undefined) { auth[t.dataset.au] = t.value; return; }
+    if (t.id === 'del-confirm') { ui.delText = t.value; var dg = $('del-go'); if (dg) dg.disabled = t.value.trim().toUpperCase() !== 'DELETE'; return; }
     if (t.dataset.mx !== undefined) { ui.mealDraft.d[t.dataset.mx] = t.value; return; }
     if (t.dataset.dm !== undefined && state.active) { getDraft(key(state.active.exercises[+t.dataset.dm])).m = t.value; return; }
     if (t.dataset.sg !== undefined && ui.scan) { ui.scan.grams = t.value; applyScan(); return; }
