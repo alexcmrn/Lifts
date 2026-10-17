@@ -438,6 +438,14 @@ nav.tabs button[hidden] { display: none; }
 #foot .card { text-align: left; }
 .delbtn { background: var(--pr); color: var(--pr-ink); }
 .delbtn:disabled { opacity: .45; cursor: default; }
+.field select { height: var(--h-ctl); border-radius: var(--r-ctl); border: 1px solid var(--line); background: var(--field); color: var(--ink); font: inherit; padding: 0 10px; width: 100%; }
+.frow { display: flex; gap: 10px; }
+.frow .field { flex: 1; }
+.prow { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.prow:first-of-type { border-top: 0; }
+.prow span:first-child { color: var(--mute); }
+.pname { margin: 0 0 6px; font-size: 1.7rem; }
+.dzone { margin-top: 28px; text-align: center; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -456,14 +464,13 @@ nav.tabs button[hidden] { display: none; }
     <button type="button" role="tab" data-a="tab" data-tab="plans" id="tab-plans">Plans</button>
     <button type="button" role="tab" data-a="tab" data-tab="calendar" id="tab-calendar">Calendar</button>
     <button type="button" role="tab" data-a="tab" data-tab="meals" id="tab-meals">Meals</button>
-    <button type="button" role="tab" data-a="tab" data-tab="records" id="tab-records">Records</button>
+    <button type="button" role="tab" data-a="tab" data-tab="profile" id="tab-profile">Profile</button>
     
   </nav>
 
 
   <div id="notice"></div>
   <main id="panel" role="tabpanel"></main>
-  <div id="foot"></div>
   </div>
 </div>
 
@@ -541,7 +548,7 @@ nav.tabs button[hidden] { display: none; }
   var SB_URL = 'https://opmkdaqsvjsvonrxjlpp.supabase.co';
   var SB_KEY = 'sb_publishable_4D_NLbafqCRulCFEw1fSkg_KIvJQHhD';
   var sb = null, user = null;
-  var auth = { mode: 'in', email: '', pw: '', msg: '', err: '', busy: false, checking: true, recovery: false, fatal: '', loadErr: '', focusId: null };
+  var auth = { mode: 'in', email: '', pw: '', name: '', age: '', gender: '', wt: '', wunit: 'kg', msg: '', err: '', busy: false, checking: true, recovery: false, fatal: '', loadErr: '', focusId: null };
   var snap = emptySnap();
   var retryTimer = null;
   var TABLES_UP = ['plans', 'workouts', 'schedule', 'sets', 'meals'];
@@ -670,6 +677,17 @@ nav.tabs button[hidden] { display: none; }
     }
     return page();
   }
+  // The sign-up answers travel with the login, so they are copied into the profile the first time the account loads.
+  function seedProfile() {
+    var md = (user && user.user_metadata) || {};
+    if (state.calc.name || !md.name) return;
+    state.calc.name = String(md.name).slice(0, 40);
+    if (num(md.age, 0) > 0) state.calc.age = Math.round(num(md.age, 0));
+    if (md.gender === 'm' || md.gender === 'f' || md.gender === 'o') { state.calc.gender = md.gender; if (md.gender !== 'o') state.calc.sex = md.gender; }
+    if (!(state.bodyKg > 0) && num(md.weight_kg, 0) > 0) state.bodyKg = num(md.weight_kg, 0);
+    if (md.unit === 'kg' || md.unit === 'lb') state.unit = md.unit;
+    persist();
+  }
   function loadRemote() {
     return Promise.all([fetchAll('plans'), fetchAll('workouts'), fetchAll('schedule'), fetchAll('sets'), fetchAll('meals'),
       sb.from('profiles').select('*').limit(1).then(chk)]).then(function (r) {
@@ -714,7 +732,8 @@ nav.tabs button[hidden] { display: none; }
       snapFromState(!!prof);
       state.loaded = true;
       readActive();
-      return { empty: !r[0].length && !r[1].length && !r[4].length && !prof };
+      seedProfile();
+      return { empty: !r[0].length && !r[1].length && !r[4].length };
     });
   }
 
@@ -877,9 +896,15 @@ nav.tabs button[hidden] { display: none; }
     }
     if (!pw) return fail('Enter your password.', 'au-pw');
     if (auth.mode === 'up' && pw.length < 8) return fail('Use at least 8 characters.', 'au-pw');
+    var pr = null;
+    if (auth.mode === 'up') {
+      pr = readProfile(auth.name, auth.age, auth.gender, auth.wt, auth.wunit, 'au-');
+      if (pr.err) return fail(pr.err, pr.id);
+    }
     auth.busy = true; render();
     var req = auth.mode === 'up'
-      ? sb.auth.signUp({ email: email, password: pw, options: { emailRedirectTo: location.origin + location.pathname } })
+      ? sb.auth.signUp({ email: email, password: pw, options: { emailRedirectTo: location.origin + location.pathname,
+          data: { name: pr.name, age: pr.age, gender: pr.gender, weight_kg: Math.round(pr.kg * 1000) / 1000, unit: auth.wunit } } })
       : sb.auth.signInWithPassword({ email: email, password: pw });
     req.then(function (r) {
       auth.busy = false; auth.pw = '';
@@ -901,8 +926,8 @@ nav.tabs button[hidden] { display: none; }
   }
   /* ---- deleting an account (runs the delete_my_account function in Supabase) ---- */
   function footHTML() {
-    if (!ui.delOpen) return '<button type="button" class="linkbtn mute" data-a="auth-delask">Delete account</button>';
-    return '<div class="card"><h3>Delete your account?</h3><p class="sub" style="margin:4px 0 12px">This permanently deletes your login and everything saved: workouts, plans, meals, records and targets. It cannot be undone.</p>' +
+    if (!ui.delOpen) return '<div class="dzone"><button type="button" class="linkbtn mute" data-a="auth-delask">Delete account</button></div>';
+    return '<div class="card" style="margin-top:28px"><h3>Delete your account?</h3><p class="sub" style="margin:4px 0 12px">This permanently deletes your login and everything saved: workouts, plans, meals, records and targets. It cannot be undone.</p>' +
       '<div class="field"><label for="del-confirm">Type DELETE to confirm</label><input id="del-confirm" autocomplete="off" autocapitalize="characters" value="' + esc(ui.delText || '') + '"></div>' +
       (ui.delErr ? '<p class="err">' + esc(ui.delErr) + '</p>' : '') +
       '<div class="benchbtns" style="margin-top:12px"><button type="button" class="primary delbtn" id="del-go" data-a="auth-delgo"' +
@@ -928,6 +953,21 @@ nav.tabs button[hidden] { display: none; }
     });
   }
 
+  var GENDERS = [['m', 'Male'], ['f', 'Female'], ['o', 'Other']];
+  function genderOpts(sel) { return GENDERS.map(function (g) { return '<option value="' + g[0] + '"' + (sel === g[0] ? ' selected' : '') + '>' + g[1] + '</option>'; }).join(''); }
+  function genderName(v) { var g = GENDERS.filter(function (x) { return x[0] === v; })[0]; return g ? g[1] : ''; }
+  // Checks the four profile answers. Returns { err, id } or { name, age, gender, kg }.
+  function readProfile(name, age, gender, wt, unit, p) {
+    name = String(name || '').trim();
+    var a = Number(String(age).trim()), w = Number(String(wt).trim().replace(',', '.'));
+    if (!name) return { err: 'Enter your name.', id: p + 'name' };
+    if (!(a >= 13 && a <= 100) || a !== Math.round(a)) return { err: 'Enter your age as a whole number from 13 to 100.', id: p + 'age' };
+    if (!gender) return { err: 'Choose a gender.', id: p + 'gender' };
+    var kg = unit === 'lb' ? w / LB : w;
+    if (!isFinite(w) || !(kg >= 25 && kg <= 400)) return { err: 'Enter your weight, for example ' + (unit === 'lb' ? '165' : '75') + '.', id: p + 'wt' };
+    return { name: name.slice(0, 40), age: a, gender: gender, kg: kg };
+  }
+
   function renderAuth() {
     var h = '<div class="authcard">';
     if (auth.fatal) h += '<h2>Lifts</h2><p class="err">' + esc(auth.fatal) + '</p>';
@@ -938,6 +978,13 @@ nav.tabs button[hidden] { display: none; }
       h += '<form id="authform" novalidate><h2>' + (rec ? 'Choose a new password' : up ? 'Create account' : reset ? 'Reset password' : 'Log in') + '</h2>';
       if (!rec) h += '<div class="field"><label for="au-email">Email</label><input id="au-email" type="email" data-au="email" autocomplete="email" inputmode="email" value="' + esc(auth.email) + '"></div>';
       if (!reset) h += '<div class="field"><label for="au-pw">' + (rec ? 'New password' : 'Password') + '</label><input id="au-pw" type="password" data-au="pw" autocomplete="' + (up || rec ? 'new-password' : 'current-password') + '"></div>';
+      if (up) {
+        h += '<div class="field"><label for="au-name">Name</label><input id="au-name" data-au="name" autocomplete="given-name" maxlength="40" value="' + esc(auth.name) + '"></div>' +
+          '<div class="frow"><div class="field"><label for="au-age">Age</label><input id="au-age" data-au="age" inputmode="numeric" autocomplete="off" value="' + esc(auth.age) + '"></div>' +
+          '<div class="field"><label for="au-gender">Gender</label><select id="au-gender" data-au="gender"><option value=""></option>' + genderOpts(auth.gender) + '</select></div></div>' +
+          '<div class="frow"><div class="field"><label for="au-wt">Weight</label><input id="au-wt" data-au="wt" inputmode="decimal" autocomplete="off" value="' + esc(auth.wt) + '"></div>' +
+          '<div class="field"><label for="au-wunit">Unit</label><select id="au-wunit" data-au="wunit"><option value="kg"' + (auth.wunit === 'kg' ? ' selected' : '') + '>kg</option><option value="lb"' + (auth.wunit === 'lb' ? ' selected' : '') + '>lb</option></select></div></div>';
+      }
       if (auth.err) h += '<p class="err">' + esc(auth.err) + '</p>';
       if (auth.msg) h += '<p class="msg">' + esc(auth.msg) + '</p>';
       h += '<button class="submit" type="submit"' + (auth.busy ? ' disabled' : '') + '>' + (auth.busy ? 'Please wait...' : rec ? 'Save password' : up ? 'Create account' : reset ? 'Send reset link' : 'Log in') + '</button></form>';
@@ -2327,7 +2374,7 @@ nav.tabs button[hidden] { display: none; }
     });
     if (!ui.sel || !groups[ui.sel]) ui.sel = rows[0].k;
 
-    var html = '<h2>All-time bests</h2><div class="tablewrap"><table><thead><tr><th scope="col">Lift</th><th scope="col">Heaviest</th>' +
+    var html = '<h3>All-time bests</h3><div class="tablewrap"><table><thead><tr><th scope="col">Lift</th><th scope="col">Heaviest</th>' +
       '<th scope="col">Est. 1RM</th><th scope="col" class="r">Last</th></tr></thead><tbody>';
     rows.forEach(function (g) {
       var b = bests(g.k);
@@ -2357,6 +2404,49 @@ nav.tabs button[hidden] { display: none; }
     return html;
   }
 
+  /* ---------- Profile tab ---------- */
+  function profileCard() {
+    var c = state.calc || {}, has = !!c.name;
+    if (!ui.pf && !has) ui.pf = { name: '', age: c.age ? String(c.age) : '', gender: c.gender || '', wt: state.bodyKg > 0 ? fmtW(bodyKg()) : '', err: '' };
+    if (ui.pf) {
+      var d = ui.pf;
+      return '<div class="card"><h3>' + (has ? 'Edit profile' : 'Set up your profile') + '</h3>' +
+        '<div class="field"><label for="pf-name">Name</label><input id="pf-name" data-pf="name" autocomplete="given-name" maxlength="40" value="' + esc(d.name) + '"></div>' +
+        '<div class="frow" style="margin-top:12px"><div class="field"><label for="pf-age">Age</label><input id="pf-age" data-pf="age" inputmode="numeric" autocomplete="off" value="' + esc(d.age) + '"></div>' +
+        '<div class="field"><label for="pf-gender">Gender</label><select id="pf-gender" data-pf="gender"><option value=""></option>' + genderOpts(d.gender) + '</select></div></div>' +
+        '<div class="field" style="margin-top:12px"><label for="pf-wt">Weight (' + state.unit + ')</label><input id="pf-wt" data-pf="wt" inputmode="decimal" autocomplete="off" value="' + esc(d.wt) + '"></div>' +
+        (d.err ? '<p class="err">' + esc(d.err) + '</p>' : '') +
+        '<div class="benchbtns" style="margin-top:12px"><button type="button" class="primary" data-a="pf-save">Save</button>' +
+        (has ? '<button type="button" class="secondary" data-a="pf-cancel">Cancel</button>' : '') + '</div></div>';
+    }
+    return '<div class="card"><h2 class="pname">' + esc(c.name) + '</h2>' +
+      '<div class="prow"><span>Age</span><span>' + (c.age ? c.age : '-') + '</span></div>' +
+      '<div class="prow"><span>Gender</span><span>' + (genderName(c.gender) || '-') + '</span></div>' +
+      '<div class="prow"><span>Weight</span><span>' + (state.bodyKg > 0 ? fmtW(state.bodyKg) + ' ' + state.unit : '-') + '</span></div>' +
+      '<div class="prow"><span>Email</span><span>' + esc((user && user.email) || '') + '</span></div>' +
+      '<div class="benchbtns" style="margin-top:12px"><button type="button" class="secondary" data-a="pf-edit">Edit profile</button></div></div>';
+  }
+  function profileAction(a) {
+    var c = state.calc;
+    if (a === 'pf-edit') ui.pf = { name: c.name || '', age: c.age ? String(c.age) : '', gender: c.gender || '', wt: state.bodyKg > 0 ? fmtW(state.bodyKg) : '', err: '' };
+    else if (a === 'pf-cancel') ui.pf = null;
+    else if (a === 'pf-save') {
+      var d = ui.pf, r = readProfile(d.name, d.age, d.gender, d.wt, state.unit, 'pf-');
+      if (r.err) { d.err = r.err; ui.focus = '#' + r.id; render(); return; }
+      c.name = r.name; c.age = r.age; c.gender = r.gender;
+      if (r.gender !== 'o') c.sex = r.gender;
+      state.bodyKg = r.kg;
+      ui.pf = null; persist();
+    }
+    render();
+  }
+  function profileHTML() {
+    var h = '<h2 class="pagetitle">Profile</h2>' + profileCard();
+    var rec = recordsHTML();
+    h += rec ? '<h2 class="pagetitle" style="margin-top:28px">Records</h2>' + rec : '<p class="sub" style="margin-top:20px">Your records will show up here after you finish a workout.</p>';
+    return h + footHTML();
+  }
+
   /* ---------- render ---------- */
   function renderLifts() {
     var names = {};
@@ -2378,21 +2468,19 @@ nav.tabs button[hidden] { display: none; }
     if (!signedIn) { renderAuth(); return; }
     var nt = $('notice');
     if (nt) nt.innerHTML = noticeHTML();
-    var ft = $('foot');
-    if (ft) { var fh = footHTML(); if (ui.footHtml !== fh) { ft.innerHTML = fh; ui.footHtml = fh; } }
     var showWk = !!state.active || !!(ui.summary && state.workouts.some(function (w) { return w.id === ui.summary; }));
     if (ui.tab === 'workout' && !showWk) ui.tab = 'plans';
     $('tab-workout').hidden = !showWk;
     document.querySelectorAll('[data-a="unit"]').forEach(function (b) {
       b.setAttribute('aria-pressed', String(b.dataset.unit === state.unit));
     });
-    ['workout', 'plans', 'calendar', 'meals', 'records'].forEach(function (t) {
+    ['workout', 'plans', 'calendar', 'meals', 'profile'].forEach(function (t) {
       var b = $('tab-' + t);
       b.setAttribute('aria-selected', String(ui.tab === t));
       b.setAttribute('aria-controls', 'panel');
       b.innerHTML = t.charAt(0).toUpperCase() + t.slice(1) + (t === 'workout' && state.active ? '<span class="live" title="Workout in progress"></span>' : '');
     });
-    $('panel').innerHTML = ui.tab === 'workout' ? workoutHTML() : ui.tab === 'plans' ? plansHTML() : ui.tab === 'calendar' ? calendarHTML() : ui.tab === 'meals' ? mealsHTML() : recordsHTML();
+    $('panel').innerHTML = ui.tab === 'workout' ? workoutHTML() : ui.tab === 'plans' ? plansHTML() : ui.tab === 'calendar' ? calendarHTML() : ui.tab === 'meals' ? mealsHTML() : profileHTML();
     var selTab = $('tab-' + ui.tab);
     if (selTab && selTab.parentNode && selTab.offsetWidth) {
       var nv = selTab.parentNode;
@@ -2536,6 +2624,7 @@ nav.tabs button[hidden] { display: none; }
       ui.tab = t.dataset.tab; ui.err = null; render();
     } else if (a === 'start') startWorkout(t.dataset.plan);
     else if (a.indexOf('auth-') === 0) authAction(a, t);
+    else if (a.indexOf('pf-') === 0) profileAction(a);
     else if (a.indexOf('tgt-') === 0) tgtAction(a, t);
     else if (a.indexOf('scan-') === 0) scanAction(a);
     else if (a.indexOf('calc-') === 0) calcAction(a, t);
@@ -2580,6 +2669,7 @@ nav.tabs button[hidden] { display: none; }
   document.addEventListener('input', function (ev) {
     var t = ev.target;
     if (t.dataset && t.dataset.au !== undefined) { auth[t.dataset.au] = t.value; return; }
+    if (t.dataset && t.dataset.pf !== undefined && ui.pf) { ui.pf[t.dataset.pf] = t.value; return; }
     if (t.id === 'del-confirm') { ui.delText = t.value; var dg = $('del-go'); if (dg) dg.disabled = t.value.trim().toUpperCase() !== 'DELETE'; return; }
     if (t.dataset.mx !== undefined) { ui.mealDraft.d[t.dataset.mx] = t.value; return; }
     if (t.dataset.dm !== undefined && state.active) { getDraft(key(state.active.exercises[+t.dataset.dm])).m = t.value; return; }
