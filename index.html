@@ -230,14 +230,14 @@ nav.tabs button { flex-shrink: 0; white-space: nowrap; }
 .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
 .dot.done { background: var(--accent); }
 .dot.pr { background: var(--pr); }
-.dot.plan { box-sizing: border-box; border: 1.5px solid var(--mute); }
+.dot.planned { box-sizing: border-box; border: 1.5px solid var(--mute); }
 .cell[aria-pressed="true"] .dot.done { background: var(--bg); }
-.cell[aria-pressed="true"] .dot.plan { border-color: var(--bg); }
+.cell[aria-pressed="true"] .dot.planned { border-color: var(--bg); }
 .dayd { margin-top: 24px; padding-top: 14px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; }
 .dayd h3 { font-size: 1.7rem; margin-bottom: 2px; }
 .dayd .wk { padding: 0; border-top: 1px solid var(--line); }
-.dot.meal { border-radius: 2px; background: var(--mute); }
-.cell[aria-pressed="true"] .dot.meal { background: var(--bg); }
+.dot.eaten { border-radius: 2px; background: var(--mute); }
+.cell[aria-pressed="true"] .dot.eaten { background: var(--bg); }
 .mform { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 4px; }
 .mform .wide { grid-column: 1 / -1; }
 .mform .submit { grid-column: 1 / -1; height: 54px; font-size: 1.4rem; margin-top: 4px; }
@@ -309,6 +309,77 @@ nav.tabs button { flex-shrink: 0; white-space: nowrap; }
 .pill.working { color: var(--accent); }
 .pill.drop { color: var(--drop); }
 .pill.add { color: var(--mute); min-width: 38px; padding: 0; }
+.catsel { display: flex; }
+.catsel button { flex: 1; min-width: 0; padding: 0 4px; }
+.msec { margin-top: 18px; }
+.msec:first-child { margin-top: 4px; }
+.msech { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.msech h4 { margin: 0; }
+.msec > .sub { margin: 0 0 4px; }
+/* ---- consistency pass: one set of sizes, radii and spacing ---- */
+:root { --r-card: 12px; --r-ctl: 10px; --h-ctl: 48px; --h-sm: 40px; --pad: 16px; --sec: 24px; }
+h2 { font-size: 1.7rem; margin: 0 0 16px; }
+h3 { font-size: 1.4rem; }
+.pagehead, .wkhead, .weeknav { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0; }
+.pagehead h2, .wkhead h2, .weeknav h2 { margin: 0; min-width: 0; font-size: 1.7rem; }
+.wnbtns { display: flex; gap: 6px; flex-shrink: 0; }
+#panel > * + * { margin-top: 16px; }
+#panel > .sect, #panel > .recap, #panel > .dayd, #panel > .detail { margin-top: var(--sec); }
+.primary, .secondary, .iconbtn, .linkbtn, .chip, .tchip, .pill, .tbtn, .unit button, .srow .load { white-space: nowrap; }
+.primary, .secondary { height: var(--h-ctl); border-radius: var(--r-ctl); padding: 0 20px; font-size: 1.2rem; }
+.primary.small { height: var(--h-sm); padding: 0 16px; font-size: 1.1rem; }
+.submit { height: var(--h-ctl); border-radius: var(--r-ctl); font-size: 1.3rem; margin-top: 4px; }
+.iconbtn { height: var(--h-sm); border-radius: var(--r-ctl); }
+.unit { border-radius: var(--r-ctl); }
+.unit button { height: var(--h-sm); }
+.field input, .trow input { height: var(--h-ctl); border-radius: var(--r-ctl); }
+.card, .ex, .plan, .calc, .scanbox, .burn, .benchask, .picker, .mform, .tpanel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); padding: var(--pad); }
+.benchask { border-left: 6px solid var(--accent); }
+.ex.done { border-color: var(--ok); box-shadow: inset 4px 0 0 var(--ok); }
+.plans { margin-top: 0; }
+.plan { margin: 0; }
+.mform { gap: 12px; }
+.calc, .tpanel, .scanbox { margin: 0; }
+.tpanel { display: flex; flex-direction: column; gap: 0; }
+.tpanel h3, .calc h3 { margin: 0 0 8px; }
+.tnote { margin: 0 0 4px; }
+.linkrow { display: flex; gap: 20px; flex-wrap: wrap; }
+.linkrow .linkbtn { padding: 4px 0; }
+.stat { display: flex; flex-direction: column; min-width: 0; }
+.stat .tbar { margin-top: 6px; width: 100%; }
+.stat .l { margin-top: 2px; }
+.tbar i.ok { background: var(--ok); }
+.nrow { padding: 8px 0; border-top: 1px solid var(--line); }
+.nrow:first-child { border-top: 0; padding-top: 0; }
+.nl { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+.nv { white-space: nowrap; color: var(--mute); }
+.nv b { font: 600 1.2rem 'Barlow Condensed', sans-serif; color: var(--ink); }
+.nrow .tbar { margin-top: 6px; }
+.trow2 { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid var(--line); }
+.trow2 label { font-size: 1rem; }
+.trow2 label .sub { margin-left: 4px; }
+.tin { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.tin input { width: 92px; height: 44px; padding: 0 10px; text-align: right; font: 500 1.1rem 'Barlow', sans-serif; color: var(--ink); background: var(--field); border: 1px solid var(--line); border-radius: var(--r-ctl); }
+.tin .ul { color: var(--mute); min-width: 2.4em; font-size: .92rem; }
+.tin .linkbtn, .tin .chip { min-width: 3.4em; text-align: center; margin: 0; }
+.chip.off { opacity: .6; }
+.tpanel > .linkbtn { align-self: flex-start; margin-top: 8px; }
+.tpanel > .calc { margin-top: 12px; }
+.exrow, .meal, .tl { padding-top: 10px; padding-bottom: 10px; }
+.pname, .mname, .sname, .wkt, .exrow .name { font-size: 1.3rem; }
+.sect h4, .msech h4 { font-size: 1.2rem; }
+nav.tabs { gap: 16px; }
+nav.tabs button { font-size: 1.3rem; }
+.tablewrap td:nth-child(n+2), .tablewrap th { white-space: nowrap; }
+.tablewrap td:first-child { min-width: 7.5em; }
+.dayd { padding-top: 16px; }
+.cell { min-height: 56px; }
+@media (max-width: 380px) {
+  .catsel button { font-size: .92rem; letter-spacing: -.01em; }
+  nav.tabs { gap: 12px; }
+  nav.tabs button { font-size: 1.2rem; }
+}
+
 .pe-act { flex-wrap: wrap; height: auto; min-height: 48px; }
 .nut { display: flex; flex-direction: column; margin: 6px 0; }
 .nutrow { display: grid; grid-template-columns: 1fr auto auto; gap: 4px 14px; padding: 4px 0; border-bottom: 1px dashed var(--line); }
@@ -352,18 +423,30 @@ nav.tabs button[hidden] { display: none; }
   .entry { grid-template-columns: 1fr 1fr; }
   .entry .primary { grid-column: 1 / -1; }
 }
+[hidden] { display: none !important; }
+.authcard { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); padding: var(--pad); display: flex; flex-direction: column; gap: 14px; max-width: 420px; margin: 8px auto 0; }
+.authcard h2 { margin: 0; }
+.authcard form { display: flex; flex-direction: column; gap: 14px; }
+.authcard .msg { margin: 0; color: var(--ok); font-weight: 500; }
+.authcard .err { margin: 0; }
+.authcard .submit:disabled { opacity: .6; cursor: default; }
+.authlinks { display: flex; gap: 20px; flex-wrap: wrap; }
+.syncerr { color: var(--pr); margin: 0 0 12px; font-weight: 500; }
+#notice:not(:empty) { margin-bottom: 16px; }
+#acct { align-self: flex-end; }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <div>
-      <h1>Lifts</h1>
-      
-    </div>
-
+    <div><h1>Lifts</h1></div>
+    <div id="acct" hidden><button type="button" class="linkbtn mute" data-a="auth-out">Log out</button></div>
   </header>
+  <p class="syncerr" id="syncmsg" role="alert" hidden></p>
 
+  <div id="auth" hidden></div>
+  <div id="app" hidden>
   <nav class="tabs" role="tablist" aria-label="Sections">
     <button type="button" role="tab" data-a="tab" data-tab="workout" id="tab-workout">Workout</button>
     <button type="button" role="tab" data-a="tab" data-tab="plans" id="tab-plans">Plans</button>
@@ -374,7 +457,9 @@ nav.tabs button[hidden] { display: none; }
   </nav>
 
 
+  <div id="notice"></div>
   <main id="panel" role="tabpanel"></main>
+  </div>
 </div>
 
 <script>
@@ -388,9 +473,10 @@ nav.tabs button[hidden] { display: none; }
     'Romanian deadlift', 'Incline bench press', 'Pull-up', 'Dip', 'Hip thrust', 'Lat pulldown'];
   var REP_TARGETS = [1, 3, 5, 8, 10];
 
-  var state = { entries: [], workouts: [], plans: [], schedule: [], meals: [], calTarget: 0, calc: { sex: 'm', imp: false, act: 2, goal: 'lose', age: null, cm: null, kg: null }, bench: {}, bodyKg: 0, active: null, unit: 'kg' };
-  var ui = { tab: 'plans', sel: null, summary: null, drafts: {}, newEx: '', err: null, armed: null, histShown: 15, focus: null, edit: null, planSaved: null, open: {}, month: null, selDay: null, addDay: null, repeat: false, mealDay: null, mealErr: '', mealDraft: { name: '', kcal: '', p: '', c: '', f: '', d: {} }, calcOpen: false, calcShown: false, calcErr: '', calcDraft: { age: '', h: '', hin: '', w: '' }, scan: null, scanAll: false, openMeal: {}, moreOpen: false, dayAll: false, newCardio: false, benchAsk: null, benchMsg: '' };
-  var remoteRef = null;
+  function freshState() { var s = { entries: [], workouts: [], plans: [], schedule: [], meals: [], calTarget: 0, calc: { sex: 'm', imp: false, act: 2, goal: 'lose', age: null, cm: null, kg: null }, bench: {}, targets: {}, bodyKg: 0, active: null, unit: 'kg' }; s.loaded = false; return s; }
+  var state = freshState();
+  function freshUi() { var u = { tab: 'plans', sel: null, summary: null, drafts: {}, newEx: '', err: null, armed: null, histShown: 15, focus: null, edit: null, planSaved: null, open: {}, month: null, selDay: null, addDay: null, repeat: false, mealDay: null, mealErr: '', mealDraft: { name: '', kcal: '', p: '', c: '', f: '', d: {} }, calcOpen: false, calcShown: false, calcErr: '', calcDraft: { age: '', h: '', hin: '', w: '' }, scan: null, scanAll: false, openMeal: {}, moreOpen: false, dayAll: false, newCardio: false, benchAsk: null, benchMsg: '', mealCat: null, tgtOpen: false, tgtMore: false }; u.importOffer = null; u.importMsg = ''; return u; }
+  var ui = freshUi();
   var writeQueue = Promise.resolve();
 
   var $ = function (id) { return document.getElementById(id); };
@@ -427,7 +513,13 @@ nav.tabs button[hidden] { display: none; }
     if (reps > 12) return null;
     return reps === 1 ? kg : kg * (1 + reps / 30);
   }
-  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+  function uid() {
+    if (window.crypto && window.crypto.randomUUID) return window.crypto.randomUUID();
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+      var r = Math.random() * 16 | 0;
+      return (c === 'x' ? r : (r & 3 | 8)).toString(16);
+    });
+  }
   function cmpEntries(a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : a.ts - b.ts; }
   function grp(e) { return e.wid || ('d:' + e.date); }
   function groupByEx(sets) {
@@ -440,82 +532,385 @@ nav.tabs button[hidden] { display: none; }
     return order.map(function (k) { return map[k]; });
   }
 
-  /* ---------- storage ---------- */
-  function loadLocal() {
-    try {
-      var raw = localStorage.getItem(LS_KEY);
-      if (raw) {
-        var d = JSON.parse(raw);
-        if (d && Array.isArray(d.entries)) {
-          state.entries = d.entries;
-          state.workouts = Array.isArray(d.workouts) ? d.workouts : [];
-          state.plans = Array.isArray(d.plans) ? d.plans : [];
-          state.schedule = Array.isArray(d.schedule) ? d.schedule : [];
-          state.meals = Array.isArray(d.meals) ? d.meals : [];
-          state.calTarget = +d.calTarget > 0 ? +d.calTarget : 0;
-          if (d.calc && typeof d.calc === 'object') state.calc = Object.assign(state.calc, d.calc);
-          state.bench = d.bench && typeof d.bench === 'object' ? d.bench : {};
-          state.bodyKg = +d.bodyKg > 0 ? +d.bodyKg : 0;
-          state.active = d.active || null;
-          if (d.unit === 'kg' || d.unit === 'lb') state.unit = d.unit;
-        }
-      }
-    } catch (e) { /* storage can be empty or blocked */ }
-  }
+  /* ---------- Supabase: accounts and storage ---------- */
+  var SB_URL = 'https://opmkdaqsvjsvonrxjlpp.supabase.co';
+  var SB_KEY = 'sb_publishable_4D_NLbafqCRulCFEw1fSkg_KIvJQHhD';
+  var sb = null, user = null;
+  var auth = { mode: 'in', email: '', pw: '', msg: '', err: '', busy: false, checking: true, recovery: false, fatal: '', loadErr: '', focusId: null };
+  var snap = emptySnap();
+  var retryTimer = null;
+  var TABLES_UP = ['plans', 'workouts', 'schedule', 'sets', 'meals'];
+  var TABLES_DEL = ['sets', 'schedule', 'meals', 'workouts', 'plans'];
+  var DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+  function emptySnap() { return { plans: {}, workouts: {}, schedule: {}, sets: {}, meals: {}, profile: '' }; }
+  function iso(ms) { var d = new Date(Number(ms)); return isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString(); }
+  function num(v, dflt) { v = Number(v); return isFinite(v) ? v : dflt; }
+  function chk(res) { if (res && res.error) throw res.error; return res; }
+
+  /* The workout in progress only lives on this device until it is finished. */
+  function activeKey() { return 'gymlog.active.' + user.id; }
   function saveLocal() {
-    try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+    if (!user) return;
+    try {
+      if (state.active) {
+        var id = state.active.id;
+        localStorage.setItem(activeKey(), JSON.stringify({ active: state.active, entries: state.entries.filter(function (e) { return e.wid === id; }) }));
+      } else localStorage.removeItem(activeKey());
+    } catch (e) { /* storage can be blocked */ }
   }
-  function setStatus(synced) {
-    /* save status text removed */
+  function readActive() {
+    try {
+      var d = JSON.parse(localStorage.getItem(activeKey()) || 'null');
+      if (d && d.active && d.active.id && !state.workouts.some(function (w) { return w.id === d.active.id; })) {
+        state.active = d.active;
+        state.entries = state.entries.concat(Array.isArray(d.entries) ? d.entries : []);
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  /* ---- state <-> database rows ---- */
+  function toRows() {
+    var rows = { plans: {}, workouts: {}, schedule: {}, sets: {}, meals: {} };
+    var activeId = state.active ? state.active.id : null;
+    state.plans.forEach(function (p) { rows.plans[p.id] = { id: p.id, name: p.name, exercises: p.exercises }; });
+    state.workouts.forEach(function (w) {
+      rows.workouts[w.id] = { id: w.id, plan_id: w.planId && rows.plans[w.planId] ? w.planId : null, plan_name: w.plan || null,
+        workout_date: w.date, started_at: iso(w.start), ended_at: iso(w.end) };
+    });
+    state.schedule.forEach(function (s) {
+      if (!rows.plans[s.planId]) return;
+      rows.schedule[s.id] = { id: s.id, plan_id: s.planId, on_date: s.date, repeat_weekly: !!s.repeat };
+    });
+    state.entries.forEach(function (e) {
+      if (e.wid === activeId || !rows.workouts[e.wid]) return;
+      rows.sets[e.id] = { id: e.id, workout_id: e.wid, exercise: e.ex, weight_kg: e.kg || 0, reps: e.reps || 0,
+        minutes: e.cardio ? num(e.mins, 0) : null, is_cardio: !!e.cardio, set_type: typeOf(e), logged_at: iso(e.ts) };
+    });
+    state.meals.forEach(function (m) {
+      rows.meals[m.id] = { id: m.id, meal_date: m.date, category: m.cat || null, name: m.name, kcal: m.kcal || 0, protein: m.p || 0,
+        carbs: m.c || 0, fats: m.f || 0, nutrients: m.d || null, product_info: m.info || null, amount_g: m.amt || null, logged_at: iso(m.ts) };
+    });
+    return rows;
+  }
+  function profileRow() {
+    return { user_id: user.id, unit: state.unit, body_kg: state.bodyKg > 0 ? state.bodyKg : null,
+      cal_target: state.calTarget > 0 ? Math.round(state.calTarget) : null, targets: state.targets, calc: state.calc, bench: state.bench };
+  }
+  function snapFromState(hasProfile) {
+    var rows = toRows();
+    snap = emptySnap();
+    TABLES_UP.forEach(function (t) {
+      Object.keys(rows[t]).forEach(function (id) { snap[t][id] = JSON.stringify(rows[t][id]); });
+    });
+    snap.profile = hasProfile ? JSON.stringify(profileRow()) : '';
+  }
+
+  /* ---- saving: only what changed is sent ---- */
+  function chunkRun(items, size, fn) {
+    var p = Promise.resolve();
+    for (var i = 0; i < items.length; i += size) {
+      (function (c) { p = p.then(function () { return fn(c); }).then(chk); })(items.slice(i, i + size));
+    }
+    return p;
+  }
+  function setSyncFail(f) {
+    var m = $('syncmsg');
+    if (m) {
+      m.hidden = !f;
+      m.textContent = f ? 'Could not save your latest changes. Trying again shortly.' : '';
+    }
+    if (f && !retryTimer) {
+      retryTimer = setTimeout(function () { retryTimer = null; writeQueue = writeQueue.then(syncNow); }, 8000);
+    }
+  }
+  function syncNow() {
+    if (!sb || !user || !state.loaded) return Promise.resolve();
+    var rows = toRows();
+    var p = Promise.resolve();
+    TABLES_UP.forEach(function (t) {
+      var up = [];
+      Object.keys(rows[t]).forEach(function (id) { if (snap[t][id] !== JSON.stringify(rows[t][id])) up.push(rows[t][id]); });
+      if (!up.length) return;
+      p = p.then(function () { return chunkRun(up, 300, function (c) { return sb.from(t).upsert(c); }); })
+        .then(function () { up.forEach(function (r) { snap[t][r.id] = JSON.stringify(r); }); });
+    });
+    TABLES_DEL.forEach(function (t) {
+      var gone = Object.keys(snap[t]).filter(function (id) { return !rows[t][id]; });
+      if (!gone.length) return;
+      p = p.then(function () { return chunkRun(gone, 80, function (c) { return sb.from(t).delete().in('id', c); }); })
+        .then(function () { gone.forEach(function (id) { delete snap[t][id]; }); });
+    });
+    var pr = profileRow(), ps = JSON.stringify(pr);
+    if (ps !== snap.profile) {
+      p = p.then(function () { return sb.from('profiles').upsert(pr, { onConflict: 'user_id' }); }).then(chk).then(function () { snap.profile = ps; });
+    }
+    return p.then(function () { setSyncFail(false); }).catch(function () { setSyncFail(true); });
   }
   function persist() {
     saveLocal();
-    if (!remoteRef) return;
-    var payload = JSON.parse(JSON.stringify({ entries: state.entries, workouts: state.workouts, plans: state.plans, schedule: state.schedule, meals: state.meals, calTarget: state.calTarget, calc: state.calc, bench: state.bench, bodyKg: state.bodyKg, active: state.active, unit: state.unit }));
-    writeQueue = writeQueue
-      .then(function () { return remoteRef.set(payload); })
-      .then(function () { setStatus(true); })
-      .catch(function () { setStatus(false); });
+    if (!sb || !user || !state.loaded) return;
+    writeQueue = writeQueue.then(syncNow);
   }
-  function mergeById(a, b) {
-    var seen = {}, out = [];
-    (a || []).concat(b || []).forEach(function (x) {
-      if (x && !seen[x.id]) { seen[x.id] = 1; out.push(x); }
-    });
-    return out;
-  }
-  function initRemote() {
-    if (!window.claude || !window.claude.use) return;
-    Promise.all([window.claude.use('db'), window.claude.use('user')]).then(function (res) {
-      var db = res[0], user = res[1];
-      if (!db || !user) return null;
-      return user.id().then(function (id) {
-        if (!id) return null;
-        var ref = db.doc('data/users/' + id + '/gymlog');
-        return ref.get().then(function (snap) {
-          if (snap.exists) {
-            var d = JSON.parse(JSON.stringify(snap.data()));
-            if (d && Array.isArray(d.entries)) {
-              state.entries = mergeById(d.entries, state.entries);
-              state.workouts = mergeById(d.workouts, state.workouts);
-              state.plans = mergeById(d.plans, state.plans);
-              state.schedule = mergeById(d.schedule, state.schedule);
-              state.meals = mergeById(d.meals, state.meals);
-              if (+d.calTarget > 0) state.calTarget = +d.calTarget;
-              if (d.calc && typeof d.calc === 'object') state.calc = Object.assign(state.calc, d.calc);
-              if (d.bench && typeof d.bench === 'object') state.bench = Object.assign({}, d.bench, state.bench);
-              if (+d.bodyKg > 0 && !state.bodyKg) state.bodyKg = +d.bodyKg;
-              if (!state.active && d.active && !state.workouts.some(function (w) { return w.id === d.active.id; })) state.active = d.active;
-              if (d.unit === 'kg' || d.unit === 'lb') state.unit = d.unit;
-            }
-          }
-          remoteRef = ref;
-          setStatus(true);
-          persist();
-          render();
-        });
+
+  /* ---- loading ---- */
+  function fetchAll(t) {
+    var out = [], from = 0;
+    function page() {
+      return sb.from(t).select('*').order('id').range(from, from + 999).then(chk).then(function (r) {
+        out = out.concat(r.data || []);
+        if ((r.data || []).length === 1000) { from += 1000; return page(); }
+        return out;
       });
-    }).catch(function () { /* stay on device storage */ });
+    }
+    return page();
+  }
+  function loadRemote() {
+    return Promise.all([fetchAll('plans'), fetchAll('workouts'), fetchAll('schedule'), fetchAll('sets'), fetchAll('meals'),
+      sb.from('profiles').select('*').limit(1).then(chk)]).then(function (r) {
+      var s = freshState();
+      var prof = (r[5].data || [])[0];
+      var planName = {};
+      s.plans = r[0].map(function (p) { planName[p.id] = p.name; return { id: p.id, name: p.name, exercises: Array.isArray(p.exercises) ? p.exercises : [] }; });
+      var wDate = {};
+      r[1].forEach(function (w) {
+        if (!w.ended_at) return;
+        wDate[w.id] = w.workout_date;
+        s.workouts.push({ id: w.id, date: w.workout_date, start: Date.parse(w.started_at), end: Date.parse(w.ended_at), plan: w.plan_name || null, planId: w.plan_id || null });
+      });
+      r[2].forEach(function (x) {
+        s.schedule.push({ id: x.id, date: x.on_date, planId: x.plan_id, name: planName[x.plan_id] || '', repeat: !!x.repeat_weekly });
+      });
+      r[3].forEach(function (x) {
+        if (!wDate[x.workout_id]) return;
+        var e = { id: x.id, ex: x.exercise, kg: Number(x.weight_kg) || 0, reps: x.reps || 0, type: x.set_type || 'working',
+          date: wDate[x.workout_id], ts: Date.parse(x.logged_at), wid: x.workout_id };
+        if (x.is_cardio) { e.cardio = true; e.mins = Number(x.minutes) || 0; }
+        s.entries.push(e);
+      });
+      r[4].forEach(function (x) {
+        var m = { id: x.id, date: x.meal_date, name: x.name, kcal: Number(x.kcal) || 0, p: Number(x.protein) || 0,
+          c: Number(x.carbs) || 0, f: Number(x.fats) || 0, ts: Date.parse(x.logged_at) };
+        if (x.category) m.cat = x.category;
+        if (x.nutrients) m.d = x.nutrients;
+        if (x.product_info) m.info = x.product_info;
+        if (x.amount_g) m.amt = Number(x.amount_g);
+        s.meals.push(m);
+      });
+      if (prof) {
+        if (prof.unit === 'kg' || prof.unit === 'lb') s.unit = prof.unit;
+        s.bodyKg = Number(prof.body_kg) > 0 ? Number(prof.body_kg) : 0;
+        s.calTarget = Number(prof.cal_target) > 0 ? Number(prof.cal_target) : 0;
+        s.targets = prof.targets && typeof prof.targets === 'object' ? prof.targets : {};
+        s.calc = Object.assign(s.calc, prof.calc && typeof prof.calc === 'object' ? prof.calc : {});
+        s.bench = prof.bench && typeof prof.bench === 'object' ? prof.bench : {};
+      }
+      state = s;
+      snapFromState(!!prof);
+      state.loaded = true;
+      readActive();
+      return { empty: !r[0].length && !r[1].length && !r[4].length && !prof };
+    });
+  }
+
+  /* ---- bringing over data saved in this browser before accounts ---- */
+  function readLegacy() {
+    try {
+      var d = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
+      if (!d || typeof d !== 'object') return null;
+      var n = { workouts: (d.workouts || []).length, plans: (d.plans || []).length, meals: (d.meals || []).length, sets: (d.entries || []).length };
+      return n.workouts || n.plans || n.meals || n.sets ? { data: d, n: n } : null;
+    } catch (e) { return null; }
+  }
+  function importLegacy() {
+    var lg = readLegacy();
+    if (!lg) return;
+    var d = lg.data, map = {};
+    function id2(k) { return map[k] || (map[k] = uid()); }
+    var plans = (d.plans || []).filter(function (p) { return p && p.id; }).map(function (p) {
+      return { id: id2('p' + p.id), name: String(p.name || 'Plan'), exercises: Array.isArray(p.exercises) ? p.exercises : [] };
+    });
+    var wks = [], byOld = {};
+    (d.workouts || []).forEach(function (w) {
+      if (!w || !w.id || !DATE_RE.test(w.date || '')) return;
+      var st = num(w.start, Date.now());
+      var nw = { id: id2('w' + w.id), date: w.date, start: st, end: num(w.end, st), plan: w.plan || null, planId: w.planId && map['p' + w.planId] ? map['p' + w.planId] : null };
+      wks.push(nw); byOld[w.id] = nw;
+    });
+    var legacyDay = {}, ents = [];
+    (d.entries || []).forEach(function (e) {
+      if (!e || !e.ex || !DATE_RE.test(e.date || '')) return;
+      var wk;
+      if (e.wid) { wk = byOld[e.wid]; if (!wk) return; }
+      else {
+        wk = legacyDay[e.date];
+        if (!wk) {
+          var st = new Date(e.date + 'T12:00:00').getTime();
+          wk = legacyDay[e.date] = { id: uid(), date: e.date, start: st, end: st, plan: null, planId: null };
+          wks.push(wk);
+        }
+      }
+      var ne = { id: uid(), ex: String(e.ex), kg: Math.max(0, num(e.kg, 0)), reps: Math.min(100, Math.max(0, Math.round(num(e.reps, 0)))),
+        type: typeOf(e), date: wk.date, ts: num(e.ts, wk.start), wid: wk.id };
+      if (e.cardio) { ne.cardio = true; ne.mins = Math.max(0, num(e.mins, 0)); }
+      ents.push(ne);
+    });
+    var sched = (d.schedule || []).filter(function (s) { return s && map['p' + s.planId] && DATE_RE.test(s.date || ''); }).map(function (s) {
+      return { id: uid(), date: s.date, planId: map['p' + s.planId], name: s.name || '', repeat: !!s.repeat };
+    });
+    var CATS = { breakfast: 1, lunch: 1, dinner: 1, snack: 1 };
+    var meals = (d.meals || []).filter(function (m) { return m && m.name && DATE_RE.test(m.date || ''); }).map(function (m) {
+      var nm = { id: uid(), date: m.date, name: String(m.name), kcal: num(m.kcal, 0), p: num(m.p, 0), c: num(m.c, 0), f: num(m.f, 0), ts: num(m.ts, Date.now()) };
+      if (CATS[m.cat]) nm.cat = m.cat;
+      if (m.d && typeof m.d === 'object') nm.d = m.d;
+      if (m.info && typeof m.info === 'object') nm.info = m.info;
+      if (num(m.amt, 0) > 0) nm.amt = num(m.amt, 0);
+      return nm;
+    });
+    state.plans = state.plans.concat(plans);
+    state.workouts = state.workouts.concat(wks);
+    state.entries = state.entries.concat(ents);
+    state.schedule = state.schedule.concat(sched);
+    state.meals = state.meals.concat(meals);
+    if (d.unit === 'kg' || d.unit === 'lb') state.unit = d.unit;
+    if (num(d.bodyKg, 0) > 0) state.bodyKg = num(d.bodyKg, 0);
+    if (num(d.calTarget, 0) > 0) state.calTarget = Math.round(num(d.calTarget, 0));
+    if (d.calc && typeof d.calc === 'object') state.calc = Object.assign({}, state.calc, d.calc);
+    if (d.bench && typeof d.bench === 'object') state.bench = d.bench;
+    if (d.targets && typeof d.targets === 'object') state.targets = d.targets;
+    ui.importOffer = null;
+    ui.importMsg = 'Imported ' + wks.length + (wks.length === 1 ? ' workout, ' : ' workouts, ') + meals.length + (meals.length === 1 ? ' meal and ' : ' meals and ') + plans.length + (plans.length === 1 ? ' plan.' : ' plans.');
+    persist();
+    setTimeout(function () { ui.importMsg = ''; var n = $('notice'); if (n) n.innerHTML = noticeHTML(); }, 8000);
+  }
+  function noticeHTML() {
+    if (ui.importOffer) {
+      var n = ui.importOffer;
+      return '<div class="card"><h3>Bring over your saved data?</h3><p class="sub" style="margin:4px 0 12px">This browser has ' +
+        n.workouts + (n.workouts === 1 ? ' workout, ' : ' workouts, ') + n.meals + (n.meals === 1 ? ' meal and ' : ' meals and ') + n.plans + (n.plans === 1 ? ' plan' : ' plans') +
+        ' from before accounts. Add them to your account?</p><div class="benchbtns"><button type="button" class="primary" data-a="auth-import">Import</button>' +
+        '<button type="button" class="secondary" data-a="auth-skipimport">Skip</button></div></div>';
+    }
+    return ui.importMsg ? '<p class="sub">' + esc(ui.importMsg) + '</p>' : '';
+  }
+
+  /* ---- sign up, log in, log out ---- */
+  function friendly(e) {
+    var m = (e && e.message) || '';
+    if (/failed to fetch|network|load failed/i.test(m)) return 'Could not reach the server. Check your connection.';
+    if (/invalid login/i.test(m)) return 'That email and password do not match.';
+    if (/not confirmed/i.test(m)) return 'Confirm your email first. Check your inbox for the link.';
+    if (/already registered/i.test(m)) return 'That email already has an account. Try logging in.';
+    if (/rate limit|too many/i.test(m)) return 'Too many attempts. Wait a few minutes and try again.';
+    return m || 'Something went wrong. Try again.';
+  }
+  function resetAll() {
+    user = null;
+    state = freshState();
+    ui = freshUi();
+    snap = emptySnap();
+    auth.checking = false; auth.busy = false; auth.mode = 'in'; auth.pw = ''; auth.err = ''; auth.loadErr = '';
+    render();
+  }
+  function startSession(u) {
+    if (user && user.id === u.id) return;
+    user = u;
+    auth.checking = true; auth.loadErr = '';
+    render();
+    loadRemote().then(function (res) {
+      auth.checking = false;
+      var lg = res.empty ? readLegacy() : null;
+      ui.importOffer = lg ? lg.n : null;
+      ui.tab = state.active ? 'workout' : 'plans';
+      render();
+    }).catch(function () {
+      auth.checking = false;
+      auth.loadErr = 'Could not load your data. Check your connection and try again.';
+      render();
+    });
+  }
+  function initAuth() {
+    if (!window.supabase || !window.supabase.createClient) {
+      auth.fatal = 'Could not load the sign-in service. Check your connection and reload the page.';
+      auth.checking = false; render(); return;
+    }
+    try { sb = window.supabase.createClient(SB_URL, SB_KEY); }
+    catch (e) { auth.fatal = 'Could not start the sign-in service.'; auth.checking = false; render(); return; }
+    sb.auth.onAuthStateChange(function (event, session) {
+      setTimeout(function () {
+        if (event === 'PASSWORD_RECOVERY') { auth.recovery = true; auth.checking = false; render(); }
+        if (event === 'SIGNED_OUT') { resetAll(); return; }
+        if (session && session.user) startSession(session.user);
+        else if (event === 'INITIAL_SESSION') { auth.checking = false; render(); }
+      }, 0);
+    });
+  }
+  function authSubmit() {
+    if (auth.busy || !sb) return;
+    var email = String(auth.email || '').trim(), pw = auth.pw || '';
+    auth.err = ''; auth.msg = '';
+    function fail(msg, id) { auth.err = msg; auth.focusId = id; render(); }
+    if (auth.recovery) {
+      if (pw.length < 8) return fail('Use at least 8 characters.', 'au-pw');
+      auth.busy = true; render();
+      sb.auth.updateUser({ password: pw }).then(function (r) {
+        auth.busy = false;
+        if (r.error) auth.err = friendly(r.error); else { auth.recovery = false; auth.pw = ''; }
+        render();
+      });
+      return;
+    }
+    if (!/^\S+@\S+\.\S+$/.test(email)) return fail('Enter a valid email address.', 'au-email');
+    if (auth.mode === 'reset') {
+      auth.busy = true; render();
+      sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname }).then(function (r) {
+        auth.busy = false;
+        if (r.error) auth.err = friendly(r.error); else { auth.msg = 'If that email has an account, a reset link is on its way.'; auth.mode = 'in'; }
+        render();
+      });
+      return;
+    }
+    if (!pw) return fail('Enter your password.', 'au-pw');
+    if (auth.mode === 'up' && pw.length < 8) return fail('Use at least 8 characters.', 'au-pw');
+    auth.busy = true; render();
+    var req = auth.mode === 'up'
+      ? sb.auth.signUp({ email: email, password: pw, options: { emailRedirectTo: location.origin + location.pathname } })
+      : sb.auth.signInWithPassword({ email: email, password: pw });
+    req.then(function (r) {
+      auth.busy = false; auth.pw = '';
+      if (r.error) auth.err = friendly(r.error);
+      else if (auth.mode === 'up' && !(r.data && r.data.session)) { auth.msg = 'Check your email for a confirmation link, then log in.'; auth.mode = 'in'; }
+      render();
+    });
+  }
+  function authAction(a, t) {
+    if (a === 'auth-mode') { auth.mode = t.dataset.v; auth.err = ''; auth.msg = ''; auth.pw = ''; auth.focusId = 'au-email'; render(); }
+    else if (a === 'auth-out') {
+      if (sb) sb.auth.signOut({ scope: 'local' }).then(function () { if (user) resetAll(); });
+    } else if (a === 'auth-retry') { var u = user; user = null; if (u) startSession(u); }
+    else if (a === 'auth-import') { importLegacy(); render(); }
+    else if (a === 'auth-skipimport') { ui.importOffer = null; var n = $('notice'); if (n) n.innerHTML = ''; }
+  }
+  function renderAuth() {
+    var h = '<div class="authcard">';
+    if (auth.fatal) h += '<h2>Lifts</h2><p class="err">' + esc(auth.fatal) + '</p>';
+    else if (auth.loadErr) h += '<h2>Lifts</h2><p class="err">' + esc(auth.loadErr) + '</p><div class="benchbtns"><button type="button" class="primary" data-a="auth-retry">Try again</button><button type="button" class="secondary" data-a="auth-out">Log out</button></div>';
+    else if (auth.checking) h += '<p class="sub">Loading...</p>';
+    else {
+      var rec = auth.recovery, up = auth.mode === 'up', reset = auth.mode === 'reset';
+      h += '<form id="authform" novalidate><h2>' + (rec ? 'Choose a new password' : up ? 'Create account' : reset ? 'Reset password' : 'Log in') + '</h2>';
+      if (!rec) h += '<div class="field"><label for="au-email">Email</label><input id="au-email" type="email" data-au="email" autocomplete="email" inputmode="email" value="' + esc(auth.email) + '"></div>';
+      if (!reset) h += '<div class="field"><label for="au-pw">' + (rec ? 'New password' : 'Password') + '</label><input id="au-pw" type="password" data-au="pw" autocomplete="' + (up || rec ? 'new-password' : 'current-password') + '"></div>';
+      if (auth.err) h += '<p class="err">' + esc(auth.err) + '</p>';
+      if (auth.msg) h += '<p class="msg">' + esc(auth.msg) + '</p>';
+      h += '<button class="submit" type="submit"' + (auth.busy ? ' disabled' : '') + '>' + (auth.busy ? 'Please wait...' : rec ? 'Save password' : up ? 'Create account' : reset ? 'Send reset link' : 'Log in') + '</button></form>';
+      if (!rec) {
+        h += '<div class="authlinks">' + (up || reset ? '<button type="button" class="linkbtn" data-a="auth-mode" data-v="in">Back to log in</button>'
+          : '<button type="button" class="linkbtn" data-a="auth-mode" data-v="up">Create an account</button><button type="button" class="linkbtn" data-a="auth-mode" data-v="reset">Forgot password?</button>') + '</div>';
+      }
+    }
+    $('auth').innerHTML = h + '</div>';
+    if (auth.focusId) { var f = $(auth.focusId); if (f) f.focus(); auth.focusId = null; }
   }
 
   /* ---------- PR analysis ---------- */
@@ -591,7 +986,7 @@ nav.tabs button[hidden] { display: none; }
     return state.entries.filter(function (e) { return key(e.ex) === k && e.type !== 'warmup' && grp(e) === g; }).sort(cmpEntries);
   }
   /* ---------- shared bits of markup ---------- */
-  var TYPES = [['warmup', 'Warm-up'], ['working', 'Working'], ['drop', 'Drop']];
+  var TYPES = [['warmup', 'Warmup'], ['working', 'Working'], ['drop', 'Drop']];
   // Only working sets of strength lifts count towards PRs and records.
   function counts(e) { return !e.cardio && e.type !== 'warmup' && e.type !== 'drop'; }
   function typeOf(e) { return e.type === 'warmup' || e.type === 'drop' ? e.type : 'working'; }
@@ -607,7 +1002,7 @@ nav.tabs button[hidden] { display: none; }
   function typeChip(e) {
     if (e.cardio) return '';
     var t = typeOf(e);
-    return '<span class="tchip ' + t + '">' + (t === 'warmup' ? 'Warm-up' : t === 'drop' ? 'Drop' : 'Working') + '</span>';
+    return '<span class="tchip ' + t + '">' + (t === 'warmup' ? 'Warmup' : t === 'drop' ? 'Drop' : 'Working') + '</span>';
   }
   function setLine(sets, flags) {
     return '<div class="setline">' + sets.map(function (e) {
@@ -715,7 +1110,7 @@ nav.tabs button[hidden] { display: none; }
       st.pending.forEach(function (t) {
         var label = t === 'warmup' ? 'W' : t === 'drop' ? 'D' : String(++wn);
         html += '<div class="srow pending ' + t + '"><span class="n">' + label + '</span><span class="load">' +
-          (st.cardio ? 'Cardio' : t === 'warmup' ? 'Warm-up' : t === 'drop' ? 'Drop set' : 'Set ' + label) +
+          (st.cardio ? 'Cardio' : t === 'warmup' ? 'Warmup' : t === 'drop' ? 'Drop set' : 'Set ' + label) +
           '</span><span class="ring" aria-hidden="true"></span></div>';
       });
 
@@ -869,7 +1264,7 @@ nav.tabs button[hidden] { display: none; }
     var known = state.entries.filter(function (en) { return key(en.ex) === k; })[0];
     return known ? known.ex : n;
   }
-  function typeName(t) { return t === 'warmup' ? 'Warm-up' : t === 'drop' ? 'Drop' : 'Working'; }
+  function typeName(t) { return t === 'warmup' ? 'Warmup' : t === 'drop' ? 'Drop' : 'Working'; }
   // The planned sets of an exercise as a list of types, e.g. ['warmup', 'working', 'working', 'drop'].
   function planSlots(x) {
     if (x && x.types && x.types.length) return x.types.map(function (t) { return t === 'warmup' || t === 'drop' ? t : 'working'; });
@@ -882,7 +1277,7 @@ nav.tabs button[hidden] { display: none; }
     types.forEach(function (t) { c[t === 'warmup' || t === 'drop' ? t : 'working']++; });
     if (!c.warmup && !c.drop) return c.working + (c.working === 1 ? ' set' : ' sets');
     var parts = [];
-    if (c.warmup) parts.push(c.warmup + ' warm-up');
+    if (c.warmup) parts.push(c.warmup + ' warmup');
     if (c.working) parts.push(c.working + ' working');
     if (c.drop) parts.push(c.drop + ' drop');
     return parts.join(', ');
@@ -958,7 +1353,7 @@ nav.tabs button[hidden] { display: none; }
     persist();
     render();
   }
-  function newPlanRow() { return { name: '', types: ['working', 'working', 'working'], cardio: false }; }
+  function newPlanRow() { return { name: '', types: ['working'], cardio: false }; }
   function planAction(a, t) {
     var e = ui.edit;
     var i = +t.dataset.i;
@@ -1094,6 +1489,7 @@ nav.tabs button[hidden] { display: none; }
   }
 
   function calendarHTML() {
+    var kt = tgt('kcal');
     var t0 = today();
     if (!ui.month) ui.month = t0.slice(0, 8) + '01';
     if (!ui.selDay) ui.selDay = t0;
@@ -1124,16 +1520,16 @@ nav.tabs button[hidden] { display: none; }
         var pr = groupByEx(itemSets(w)).some(function (g) { return exPRs(g.sets, flags).lines.length > 0; });
         dots += '<i class="dot ' + (pr ? 'pr' : 'done') + '"></i>';
       });
-      for (var j = 0; j < Math.min(pending, 3); j++) dots += '<i class="dot plan"></i>';
+      for (var j = 0; j < Math.min(pending, 3); j++) dots += '<i class="dot planned"></i>';
       var dayMeals = mealsOn(d);
       var hasMeals = dayMeals.length > 0;
       var eaten = hasMeals ? Math.round(mealTotals(dayMeals).kcal) : 0;
-      if (hasMeals) dots += '<i class="dot meal"></i>';
+      if (hasMeals) dots += '<i class="dot eaten"></i>';
       var label = parseD(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' }) +
         (wks.length ? ', ' + wks.length + (wks.length === 1 ? ' workout' : ' workouts') : '') +
         (pending ? ', ' + pending + ' planned' : '') +
-        (hasMeals ? ', ' + eaten + (state.calTarget ? ' of ' + state.calTarget : '') + ' calories eaten' : '');
-      html += '<button type="button" class="cell' + (d === t0 ? ' today' : '') + '" data-a="cal-sel" data-date="' + d + '" aria-pressed="' + (d === ui.selDay) + '" aria-label="' + esc(label) + '"><span class="n">' + n + '</span><span class="dots">' + dots + '</span>' + (hasMeals ? '<span class="kc' + (state.calTarget && eaten > state.calTarget ? ' over' : '') + '">' + eaten + (state.calTarget ? '/' + state.calTarget : '') + '</span>' : '') + '</button>';
+        (hasMeals ? ', ' + eaten + (kt ? ' of ' + kt : '') + ' calories eaten' : '');
+      html += '<button type="button" class="cell' + (d === t0 ? ' today' : '') + '" data-a="cal-sel" data-date="' + d + '" aria-pressed="' + (d === ui.selDay) + '" aria-label="' + esc(label) + '"><span class="n">' + n + '</span><span class="dots">' + dots + '</span>' + (hasMeals ? '<span class="kc' + (kt && eaten > kt ? ' over' : '') + '">' + eaten + (kt ? '/' + kt : '') + '</span>' : '') + '</button>';
     }
     html += '</div>';
     return html + dayDetail(ui.selDay, t0, flags);
@@ -1220,6 +1616,31 @@ nav.tabs button[hidden] { display: none; }
       return '<p class="info"><b>' + l[0] + '</b> ' + esc(l[1]) + '</p>';
     }).join('');
   }
+  var MEAL_CATS = [['breakfast', 'Breakfast'], ['lunch', 'Lunch'], ['dinner', 'Dinner'], ['snack', 'Snacks']];
+  function defaultCat() {
+    var h = new Date().getHours();
+    return h < 11 ? 'breakfast' : h < 16 ? 'lunch' : h < 21 ? 'dinner' : 'snack';
+  }
+  function curCat() { return ui.mealCat || defaultCat(); }
+  function catPickerHTML() {
+    return '<div class="unit catsel wide" role="group" aria-label="Which meal">' + MEAL_CATS.map(function (c) {
+      return '<button type="button" data-a="meal-cat" data-v="' + c[0] + '" aria-pressed="' + (curCat() === c[0]) + '">' + c[1] + '</button>';
+    }).join('') + '</div>';
+  }
+  // Meals grouped into Breakfast, Lunch, Dinner and Snacks (older meals without a section go under Other).
+  function mealSectionsHTML(list, withAdd) {
+    var cats = MEAL_CATS.slice();
+    if (list.some(function (m) { return !m.cat; })) cats.push(['other', 'Other']);
+    return cats.map(function (c) {
+      var items = list.filter(function (m) { return (m.cat || 'other') === c[0]; });
+      if (!items.length && !withAdd) return '';
+      var t = mealTotals(items);
+      return '<div class="msec"><div class="msech"><h4>' + c[1] + (items.length ? ' \u00B7 ' + fmtK(t.kcal) + ' kcal' : '') + '</h4>' +
+        (withAdd && c[0] !== 'other' ? '<button type="button" class="linkbtn" data-a="meal-addto" data-v="' + c[0] + '">Add</button>' : '') + '</div>' +
+        (items.length ? '<p class="sub">P ' + fmtG(t.p) + ' \u00B7 C ' + fmtG(t.c) + ' \u00B7 F ' + fmtG(t.f) + '</p>' : '') +
+        items.map(mealRow).join('') + '</div>';
+    }).join('');
+  }
   function mealHasDetail(m) {
     return !!((m.d && Object.keys(m.d).length) || (m.info && Object.keys(m.info).length) || m.amt);
   }
@@ -1235,12 +1656,13 @@ nav.tabs button[hidden] { display: none; }
   function dayNutrientsHTML(list) {
     var rows = NUT.map(function (n) {
       var have = list.filter(function (m) { return m.d && m.d[n[0]] !== undefined; });
-      if (!have.length) return '';
       var sum = have.reduce(function (s, m) { return s + Number(m.d[n[0]]); }, 0);
-      return '<div class="nutrow"><span>' + n[1] + (have.length < list.length ? ' <span class="sub">(' + have.length + ' of ' + list.length + ' meals)</span>' : '') +
-        '</span><span>' + fmtD(sum) + ' ' + n[2] + '</span></div>';
+      var t = tgt(n[0]);
+      if (!have.length && !(t > 0)) return '';
+      return '<div class="nrow"><div class="nl"><span>' + n[1] + (have.length && have.length < list.length ? ' <span class="sub">(' + have.length + ' of ' + list.length + ' meals)</span>' : '') +
+        '</span><span class="nv"><b>' + fmtD(sum) + '</b>' + (t > 0 ? ' / ' + fmtD(t) : '') + ' ' + n[2] + '</span></div>' + barHTML(kindOf(n[0]), sum, t) + '</div>';
     }).join('');
-    return rows ? '<div class="nut">' + rows + '</div>' : '';
+    return rows ? '<div class="nut">' + rows + '</div>' : '<p class="sub">Nothing to show yet.</p>';
   }
   function mealRow(m) {
     var armed = ui.armed === 'meal:' + m.id;
@@ -1257,7 +1679,7 @@ nav.tabs button[hidden] { display: none; }
     var html = '<div class="sect">';
     if (list.length) {
       var t = mealTotals(list);
-      html += '<h4>Meals \u00B7 ' + fmtK(t.kcal) + (state.calTarget ? ' / ' + fmtK(state.calTarget) : '') + ' kcal</h4><p class="sub" style="margin-bottom:6px">P ' + fmtG(t.p) + ' \u00B7 C ' + fmtG(t.c) + ' \u00B7 F ' + fmtG(t.f) + '</p>' + list.map(mealRow).join('');
+      html += '<h4>Meals \u00B7 ' + fmtK(t.kcal) + (tgt('kcal') > 0 ? ' / ' + fmtK(tgt('kcal')) : '') + ' kcal</h4><p class="sub" style="margin-bottom:6px">P ' + fmtG(t.p) + ' \u00B7 C ' + fmtG(t.c) + ' \u00B7 F ' + fmtG(t.f) + '</p>' + mealSectionsHTML(list, false);
     }
     return html + '<button type="button" class="linkbtn addbtn" data-a="meal-goto" data-date="' + d + '">Add meal</button></div>';
   }
@@ -1622,7 +2044,7 @@ nav.tabs button[hidden] { display: none; }
     else if (a === 'calc-run') {
       var q = calcParse();
       if (q.err) { ui.calcErr = q.err; ui.calcShown = false; }
-      else { ui.calcErr = ''; c.age = q.age; c.cm = q.cm; c.kg = q.kg; ui.calcShown = true; persist(); }
+      else { ui.calcErr = ''; c.age = q.age; c.cm = q.cm; c.kg = q.kg; state.bodyKg = q.kg; ui.calcShown = true; persist(); }
     } else if (a === 'calc-use') {
       state.calTarget = Math.round(+t.dataset.kcal);
       ui.calcOpen = false; ui.calcShown = false;
@@ -1631,16 +2053,93 @@ nav.tabs button[hidden] { display: none; }
     render();
   }
 
-  function targetHTML(eaten) {
-    var tg = state.calTarget;
-    var html = '';
-    if (tg) {
-      var pct = Math.min(100, Math.round(eaten / tg * 100));
-      var diff = Math.round(tg - eaten);
-      html += '<div class="tbar" role="img" aria-label="' + pct + ' percent of daily calorie target"><i class="' + (diff < 0 ? 'over' : '') + '" style="width:' + pct + '%"></i></div>' +
-        '<p class="sub tleft">' + (diff >= 0 ? fmtK(diff) + ' kcal left' : fmtK(-diff) + ' kcal over') + '</p>';
+  /* ---------- Nutrition targets ---------- */
+  // Automatic targets are typical adult guidelines scaled to body weight and calories.
+  // Anything the person types in replaces the automatic value for that nutrient.
+  var NUT_KIND = { satfat: 'limit', transfat: 'limit', chol: 'limit', sugars: 'limit', salt: 'limit', sodium: 'limit', caffeine: 'limit' };
+  function weightKnown() { return state.bodyKg > 0 || !!(state.calc && state.calc.kg > 0); }
+  function maintenanceKcal() {
+    var kg = bodyKg(), c = state.calc || {};
+    if (c.age && c.cm) {
+      var bmr = 10 * kg + 6.25 * c.cm - 5 * c.age + (c.sex === 'f' ? -161 : 5);
+      return Math.round(bmr * ACT[c.act || 0][2] / 10) * 10;
     }
-    return html + '<div class="trow"><label for="mtarget">Daily calorie target</label><input id="mtarget" inputmode="numeric" autocomplete="off" value="' + (tg || '') + '"></div><button type="button" class="linkbtn calclink" data-a="calc-toggle">' + (ui.calcOpen ? 'Close calculator' : 'Work out my target') + '</button>';
+    return Math.round(33 * kg / 10) * 10;
+  }
+  function autoTargets() {
+    var kg = bodyKg();
+    var kcal = maintenanceKcal();
+    var kc = state.calTarget > 0 ? state.calTarget : kcal;
+    var p = Math.round(1.8 * kg);
+    var f = Math.round(Math.max(0.8 * kg, 0.25 * kc / 9));
+    var c = Math.max(0, Math.round((kc - 4 * p - 9 * f) / 4));
+    return {
+      kcal: kcal, p: p, c: c, f: f,
+      satfat: Math.round(0.10 * kc / 9), monofat: Math.round(0.15 * kc / 9), polyfat: Math.round(0.07 * kc / 9),
+      transfat: Math.round(0.01 * kc / 9 * 10) / 10, chol: 300, sugars: Math.round(0.10 * kc / 4), starch: 0, fibre: 30,
+      salt: 6, sodium: 2400, potassium: 3500, calcium: 700, iron: 14, magnesium: 375, zinc: 10,
+      vita: 800, vitc: 80, vitd: 10, vite: 12, vitb12: 2.5, caffeine: 400
+    };
+  }
+  function isCustom(k) { return (k === 'kcal' ? state.calTarget : state.targets[k]) > 0; }
+  function tgt(k) {
+    var o = k === 'kcal' ? state.calTarget : state.targets[k];
+    if (o > 0) return o;
+    return weightKnown() ? (autoTargets()[k] || 0) : 0;
+  }
+  function kindOf(k) { return k === 'kcal' ? 'limit' : (NUT_KIND[k] || 'goal'); }
+  function pctOf(e, t) { return t > 0 ? Math.min(100, Math.round(e / t * 100)) : 0; }
+  function barHTML(kind, e, t) {
+    if (!(t > 0)) return '';
+    var cls = kind === 'limit' ? (e > t ? 'over' : '') : (e >= t ? 'ok' : '');
+    return '<div class="tbar" role="img" aria-label="' + pctOf(e, t) + ' percent of target"><i class="' + cls + '" style="width:' + pctOf(e, t) + '%"></i></div>';
+  }
+  function setTarget(k, raw) {
+    var n = Number(String(raw).trim().replace(',', '.'));
+    var good = isFinite(n) && n > 0 && n <= 100000;
+    if (k === 'kcal') state.calTarget = good && n <= 20000 ? Math.round(n) : 0;
+    else if (good) state.targets[k] = +n.toFixed(2);
+    else delete state.targets[k];
+    persist();
+    render();
+  }
+  function tgtRow(k, label, unit) {
+    var val = tgt(k), custom = isCustom(k);
+    return '<div class="trow2"><label for="tg-' + k + '">' + label + ' <span class="sub">' + (kindOf(k) === 'limit' ? 'limit' : 'goal') + '</span></label>' +
+      '<div class="tin"><input id="tg-' + k + '" data-tg="' + k + '" inputmode="decimal" autocomplete="off" placeholder="-" value="' + (val > 0 ? (k === 'kcal' ? Math.round(val) : fmtD(val)) : '') + '">' +
+      '<span class="ul">' + unit + '</span>' +
+      (custom ? '<button type="button" class="linkbtn" data-a="tgt-reset" data-k="' + k + '">Reset</button>'
+        : val > 0 ? '<span class="chip">Auto</span>' : '<span class="chip off">Off</span>') + '</div></div>';
+  }
+  function targetsPanelHTML() {
+    var html = '<div class="tpanel"><h3>Targets</h3>' +
+      '<div class="trow2"><label for="tbw">Your weight</label><div class="tin"><input id="tbw" inputmode="decimal" autocomplete="off" value="' +
+      (weightKnown() ? fmtW(bodyKg()) : '') + '" placeholder="-"><span class="ul">' + state.unit + '</span></div></div>' +
+      (weightKnown() ? '<p class="sub tnote">Automatic targets use your weight. Change any number to set your own.</p>'
+        : '<p class="sub tnote">Add your weight to get automatic targets for every nutrient.</p>') +
+      tgtRow('kcal', 'Calories', 'kcal') + tgtRow('p', 'Protein', 'g') + tgtRow('c', 'Carbs', 'g') + tgtRow('f', 'Fats', 'g') +
+      '<button type="button" class="linkbtn" data-a="tgt-more">' + (ui.tgtMore ? 'Hide other nutrients' : 'Other nutrients') + '</button>';
+    if (ui.tgtMore) html += NUT.map(function (n) { return tgtRow(n[0], n[1], n[2]); }).join('');
+    html += '<button type="button" class="linkbtn" data-a="calc-toggle">' + (ui.calcOpen ? 'Close calorie calculator' : 'Work out my calories') + '</button>';
+    if (ui.calcOpen) html += calcHTML();
+    return html + '</div>';
+  }
+  function tgtAction(a, t) {
+    if (a === 'tgt-open') ui.tgtOpen = !ui.tgtOpen;
+    else if (a === 'tgt-more') ui.tgtMore = !ui.tgtMore;
+    else if (a === 'tgt-reset') {
+      if (t.dataset.k === 'kcal') state.calTarget = 0; else delete state.targets[t.dataset.k];
+      persist();
+    }
+    render();
+  }
+  function statHTML(k, label, unit, eaten) {
+    var t = tgt(k);
+    var big = k === 'kcal' ? fmtK(eaten) : fmtG(eaten);
+    var cap = t > 0 ? label + ' of ' + (k === 'kcal' ? fmtK(t) : fmtG(t)) + ' ' + unit : (k === 'kcal' ? label : label + ' (' + unit + ')');
+    var left = '';
+    if (k === 'kcal' && t > 0) left = '<span class="l">' + (eaten <= t ? fmtK(t - eaten) + ' kcal left' : fmtK(eaten - t) + ' kcal over') + '</span>';
+    return '<div class="stat"><span class="num">' + big + '</span><span class="l">' + cap + '</span>' + barHTML(kindOf(k), eaten, t) + left + '</div>';
   }
   function mealsHTML() {
     var t0 = today();
@@ -1648,29 +2147,28 @@ nav.tabs button[hidden] { display: none; }
     var list = mealsOn(d);
     var tot = mealTotals(list);
     var title = d === t0 ? 'Today' : parseD(d).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
-    var html = '<div class="weeknav"><h2>' + title + '</h2><div class="wnbtns">' +
+    var html = '<div class="pagehead"><h2>' + title + '</h2><div class="wnbtns">' +
       '<button type="button" class="iconbtn" data-a="meal-prev" aria-label="Previous day">\u2039</button>' +
       '<button type="button" class="iconbtn" data-a="meal-today">Today</button>' +
       '<button type="button" class="iconbtn" data-a="meal-next" aria-label="Next day">\u203A</button></div></div>';
-    html += '<div class="stats">' +
-      '<div class="stat"><span class="num">' + fmtK(tot.kcal) + '</span><span class="l">' + (state.calTarget ? 'of ' + fmtK(state.calTarget) + ' kcal' : 'Calories') + '</span></div>' +
-      '<div class="stat"><span class="num">' + fmtG(tot.p) + '</span><span class="l">Protein (g)</span></div>' +
-      '<div class="stat"><span class="num">' + fmtG(tot.c) + '</span><span class="l">Carbs (g)</span></div>' +
-      '<div class="stat"><span class="num">' + fmtG(tot.f) + '</span><span class="l">Fats (g)</span></div></div>';
-    var dn = dayNutrientsHTML(list);
-    if (dn) html += '<button type="button" class="linkbtn" data-a="meal-allday">' + (ui.dayAll ? 'Hide all nutrients' : 'Show all nutrients for the day') + '</button>' + (ui.dayAll ? dn : '');
-    html += targetHTML(tot.kcal) + (ui.calcOpen ? calcHTML() : '');
+    html += '<div class="stats">' + statHTML('kcal', 'Calories', 'kcal', tot.kcal) + statHTML('p', 'Protein', 'g', tot.p) +
+      statHTML('c', 'Carbs', 'g', tot.c) + statHTML('f', 'Fats', 'g', tot.f) + '</div>';
+    html += '<div class="linkrow"><button type="button" class="linkbtn" data-a="meal-allday" aria-expanded="' + !!ui.dayAll + '">' + (ui.dayAll ? 'Hide all nutrients' : 'All nutrients') + '</button>' +
+      '<button type="button" class="linkbtn" data-a="tgt-open" aria-expanded="' + !!ui.tgtOpen + '">' + (ui.tgtOpen ? 'Hide targets' : 'Targets') + '</button></div>';
+    if (ui.dayAll) html += '<div class="card">' + dayNutrientsHTML(list) + '</div>';
+    if (ui.tgtOpen) html += targetsPanelHTML();
     var extras = ui.moreOpen ? NUT.map(function (n) {
       return '<div class="field"><label for="mx-' + n[0] + '">' + n[1] + ' (' + n[2] + ')</label><input id="mx-' + n[0] + '" data-mx="' + n[0] +
         '" inputmode="decimal" autocomplete="off" value="' + esc(ui.mealDraft.d[n[0]] === undefined ? '' : ui.mealDraft.d[n[0]]) + '"></div>';
     }).join('') : '';
     html += scanBoxHTML() + '<div class="mform"><button type="button" class="secondary wide" data-a="scan-open">Scan barcode</button>' +
+      catPickerHTML() +
       mfield('mn', 'name', 'Meal', true) + mfield('mk', 'kcal', 'Calories') + mfield('mp', 'p', 'Protein (g)') +
       mfield('mc', 'c', 'Carbs (g)') + mfield('mf', 'f', 'Fats (g)') +
       '<button type="button" class="linkbtn wide" data-a="meal-more" style="text-align:left">' + (ui.moreOpen ? 'Hide extra nutrition details' : 'Add more nutrition details (optional)') + '</button>' + extras +
       (ui.mealErr ? '<p class="err">' + esc(ui.mealErr) + '</p>' : '') +
       '<button type="button" class="submit" data-a="meal-add">Add meal</button></div>';
-    if (list.length) html += '<div class="sect">' + list.map(mealRow).join('') + '</div>';
+    html += '<div class="sect">' + mealSectionsHTML(list, true) + '</div>';
     return html;
   }
   function addMeal() {
@@ -1686,7 +2184,7 @@ nav.tabs button[hidden] { display: none; }
     });
     if (!name) { ui.mealErr = 'Add a name for the meal.'; ui.focus = '#mn'; render(); return; }
     if (bad || isNaN(v.kcal) || isNaN(v.p) || isNaN(v.c) || isNaN(v.f)) { ui.mealErr = 'Calories, macros and details need to be numbers of 0 or more.'; render(); return; }
-    var meal = { id: uid(), date: ui.mealDay || today(), name: name, kcal: v.kcal, p: v.p, c: v.c, f: v.f, ts: Date.now() };
+    var meal = { id: uid(), date: ui.mealDay || today(), cat: curCat(), name: name, kcal: v.kcal, p: v.p, c: v.c, f: v.f, ts: Date.now() };
     if (Object.keys(d).length) meal.d = d;
     if (ui.scan) {
       if (ui.scan.info && Object.keys(ui.scan.info).length) meal.info = ui.scan.info;
@@ -1716,6 +2214,8 @@ nav.tabs button[hidden] { display: none; }
     else if (a === 'meal-today') ui.mealDay = t0;
     else if (a === 'meal-goto') { ui.mealDay = t.dataset.date; ui.tab = 'meals'; ui.focus = '#mn'; }
     else if (a === 'meal-add') { addMeal(); return; }
+    else if (a === 'meal-cat') { ui.mealCat = t.dataset.v; }
+    else if (a === 'meal-addto') { ui.mealCat = t.dataset.v; ui.focus = '#mn'; }
     else if (a === 'meal-more') { ui.moreOpen = !ui.moreOpen; }
     else if (a === 'meal-allday') { ui.dayAll = !ui.dayAll; }
     else if (a === 'meal-toggle') {
@@ -1746,7 +2246,7 @@ nav.tabs button[hidden] { display: none; }
     });
     var pts = Object.keys(byDay).sort().map(function (d) { return byDay[d]; });
     if (pts.length < 2) return '';
-    var W = 480, H = 190, L = 44, R = 14, T = 14, B = 28;
+    var W = 480, H = 190, L = 54, R = 14, T = 14, B = 28;
     var t0 = new Date(pts[0].date + 'T00:00:00').getTime();
     var t1 = new Date(pts[pts.length - 1].date + 'T00:00:00').getTime();
     var vmin = Math.min.apply(null, pts.map(function (p) { return p.v; }));
@@ -1834,6 +2334,13 @@ nav.tabs button[hidden] { display: none; }
     });
   }
   function render() {
+    var signedIn = !!(user && state.loaded) && !auth.recovery;
+    $('app').hidden = !signedIn;
+    $('acct').hidden = !signedIn;
+    $('auth').hidden = signedIn;
+    if (!signedIn) { renderAuth(); return; }
+    var nt = $('notice');
+    if (nt) nt.innerHTML = noticeHTML();
     var showWk = !!state.active || !!(ui.summary && state.workouts.some(function (w) { return w.id === ui.summary; }));
     if (ui.tab === 'workout' && !showWk) ui.tab = 'plans';
     $('tab-workout').hidden = !showWk;
@@ -1847,6 +2354,11 @@ nav.tabs button[hidden] { display: none; }
       b.innerHTML = t.charAt(0).toUpperCase() + t.slice(1) + (t === 'workout' && state.active ? '<span class="live" title="Workout in progress"></span>' : '');
     });
     $('panel').innerHTML = ui.tab === 'workout' ? workoutHTML() : ui.tab === 'plans' ? plansHTML() : ui.tab === 'calendar' ? calendarHTML() : ui.tab === 'meals' ? mealsHTML() : recordsHTML();
+    var selTab = $('tab-' + ui.tab);
+    if (selTab && selTab.parentNode && selTab.offsetWidth) {
+      var nv = selTab.parentNode;
+      if (selTab.offsetLeft < nv.scrollLeft || selTab.offsetLeft + selTab.offsetWidth > nv.scrollLeft + nv.clientWidth) nv.scrollLeft = Math.max(0, selTab.offsetLeft - 16);
+    }
     if (ui.focus) {
       var el = $('panel').querySelector(ui.focus);
       if (el) el.focus();
@@ -1984,6 +2496,8 @@ nav.tabs button[hidden] { display: none; }
     } else if (a === 'tab') {
       ui.tab = t.dataset.tab; ui.err = null; render();
     } else if (a === 'start') startWorkout(t.dataset.plan);
+    else if (a.indexOf('auth-') === 0) authAction(a, t);
+    else if (a.indexOf('tgt-') === 0) tgtAction(a, t);
     else if (a.indexOf('scan-') === 0) scanAction(a);
     else if (a.indexOf('calc-') === 0) calcAction(a, t);
     else if (a.indexOf('meal-') === 0) mealAction(a, t);
@@ -2026,6 +2540,7 @@ nav.tabs button[hidden] { display: none; }
 
   document.addEventListener('input', function (ev) {
     var t = ev.target;
+    if (t.dataset && t.dataset.au !== undefined) { auth[t.dataset.au] = t.value; return; }
     if (t.dataset.mx !== undefined) { ui.mealDraft.d[t.dataset.mx] = t.value; return; }
     if (t.dataset.dm !== undefined && state.active) { getDraft(key(state.active.exercises[+t.dataset.dm])).m = t.value; return; }
     if (t.dataset.sg !== undefined && ui.scan) { ui.scan.grams = t.value; applyScan(); return; }
@@ -2036,6 +2551,10 @@ nav.tabs button[hidden] { display: none; }
     if (t.dataset.pe !== undefined && ui.edit) { ui.edit.exercises[+t.dataset.pe][t.dataset.f] = t.value; return; }
     if (t.dataset.dw !== undefined && state.active) getDraft(key(state.active.exercises[+t.dataset.dw])).w = t.value;
     else if (t.dataset.dr !== undefined && state.active) getDraft(key(state.active.exercises[+t.dataset.dr])).r = t.value;
+  });
+
+  document.addEventListener('submit', function (ev) {
+    if (ev.target && ev.target.id === 'authform') { ev.preventDefault(); authSubmit(); }
   });
 
   document.addEventListener('keydown', function (ev) {
@@ -2051,17 +2570,13 @@ nav.tabs button[hidden] { display: none; }
 
   document.addEventListener('change', function (ev) {
     var t = ev.target;
-    if (t.id === 'bw') {
+    if (t.id === 'bw' || t.id === 'tbw') {
       var bn = Number(String(t.value).trim().replace(',', '.'));
       state.bodyKg = isFinite(bn) && bn > 20 ? toKg(bn) : 0;
       persist(); render(); return;
     }
     if (t.dataset && t.dataset.sg !== undefined && ui.scan && ui.scanAll) { render(); return; }
-    if (t.id !== 'mtarget') return;
-    var n = Math.round(Number(String(t.value).trim().replace(',', '.')));
-    state.calTarget = isFinite(n) && n > 0 && n <= 20000 ? n : 0;
-    persist();
-    render();
+    if (t.dataset && t.dataset.tg !== undefined) setTarget(t.dataset.tg, t.value);
   });
 
   setInterval(function () {
@@ -2070,10 +2585,8 @@ nav.tabs button[hidden] { display: none; }
   }, 1000);
 
   /* ---------- start ---------- */
-  loadLocal();
-  if (state.active) ui.tab = 'workout';
   render();
-  initRemote();
+  initAuth();
 })();
 </script>
 </body>
