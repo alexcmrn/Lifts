@@ -446,6 +446,8 @@ nav.tabs button[hidden] { display: none; }
 .prow span:first-child { color: var(--mute); }
 .pname { margin: 0 0 6px; font-size: 1.7rem; }
 .dzone { margin-top: 28px; text-align: center; }
+.picker .secondary[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.picker .primary:disabled { opacity: .45; cursor: default; }
 .dzone + .dzone { margin-top: 8px !important; }
 .policy { max-width: 640px; gap: 10px; }
 .policy h2 { margin-bottom: 0; }
@@ -507,7 +509,7 @@ nav.tabs button[hidden] { display: none; }
 
   function freshState() { var s = { entries: [], workouts: [], plans: [], schedule: [], meals: [], calTarget: 0, calc: { sex: 'm', imp: false, act: 2, goal: 'lose', age: null, cm: null, kg: null }, bench: {}, targets: {}, bodyKg: 0, active: null, unit: 'kg' }; s.loaded = false; return s; }
   var state = freshState();
-  function freshUi() { var u = { policy: false, rc: { per: 'week', off: 0 }, tab: 'plans', sel: null, summary: null, drafts: {}, newEx: '', err: null, armed: null, histShown: 15, focus: null, edit: null, planSaved: null, open: {}, month: null, selDay: null, addDay: null, repeat: false, mealDay: null, mealErr: '', mealDraft: { name: '', kcal: '', p: '', c: '', f: '', d: {} }, calcOpen: false, calcShown: false, calcErr: '', calcDraft: { age: '', h: '', hin: '', w: '' }, scan: null, scanAll: false, openMeal: {}, moreOpen: false, dayAll: false, newCardio: false, benchAsk: null, benchMsg: '', mealCat: null, tgtOpen: false, tgtMore: false }; u.importOffer = null; u.importMsg = ''; return u; }
+  function freshUi() { var u = { addPlan: null, policy: false, rc: { per: 'week', off: 0 }, tab: 'plans', sel: null, summary: null, drafts: {}, newEx: '', err: null, armed: null, histShown: 15, focus: null, edit: null, planSaved: null, open: {}, month: null, selDay: null, addDay: null, repeat: false, mealDay: null, mealErr: '', mealDraft: { name: '', kcal: '', p: '', c: '', f: '', d: {} }, calcOpen: false, calcShown: false, calcErr: '', calcDraft: { age: '', h: '', hin: '', w: '' }, scan: null, scanAll: false, openMeal: {}, moreOpen: false, dayAll: false, newCardio: false, benchAsk: null, benchMsg: '', mealCat: null, tgtOpen: false, tgtMore: false }; u.importOffer = null; u.importMsg = ''; return u; }
   var ui = freshUi();
   var writeQueue = Promise.resolve();
 
@@ -1623,8 +1625,9 @@ nav.tabs button[hidden] { display: none; }
     if (ui.addDay === d) {
       html += '<div class="picker">' + (state.plans.length
         ? state.plans.map(function (p) {
-            return '<button type="button" class="secondary" data-a="cal-pick" data-plan="' + esc(p.id) + '" data-date="' + d + '">' + esc(p.name) + '</button>';
-          }).join('') + '<label class="chk"><input type="checkbox" data-a="cal-repeat"' + (ui.repeat ? ' checked' : '') + '> Repeat every week</label>'
+            return '<button type="button" class="secondary" data-a="cal-pick" aria-pressed="' + (ui.addPlan === p.id) + '" data-plan="' + esc(p.id) + '">' + esc(p.name) + '</button>';
+          }).join('') + '<label class="chk"><input type="checkbox" data-a="cal-repeat"' + (ui.repeat ? ' checked' : '') + '> Repeat every week</label>' +
+          '<button type="button" class="primary" data-a="cal-confirm" data-date="' + d + '"' + (ui.addPlan ? '' : ' disabled') + '>Add</button>'
         : '<button type="button" class="secondary" data-a="tab" data-tab="plans">Create a plan first</button>') +
         '<button type="button" class="linkbtn mute" data-a="cal-cancel">Cancel</button></div>';
     } else {
@@ -1691,15 +1694,16 @@ nav.tabs button[hidden] { display: none; }
       ui.selDay = t.dataset.date; ui.addDay = null;
       ui.focus = '[data-a="cal-sel"][data-date="' + t.dataset.date + '"]';
     }
-    else if (a === 'cal-add') { ui.addDay = t.dataset.date; ui.repeat = false; }
-    else if (a === 'cal-cancel') { ui.addDay = null; }
+    else if (a === 'cal-add') { ui.addDay = t.dataset.date; ui.repeat = false; ui.addPlan = null; }
+    else if (a === 'cal-cancel') { ui.addDay = null; ui.addPlan = null; }
     else if (a === 'cal-repeat') { ui.repeat = t.checked; return; }
-    else if (a === 'cal-pick') {
-      var p = state.plans.filter(function (x) { return x.id === t.dataset.plan; })[0];
+    else if (a === 'cal-pick') { ui.addPlan = ui.addPlan === t.dataset.plan ? null : t.dataset.plan; ui.focus = '[data-a="cal-pick"][data-plan="' + t.dataset.plan + '"]'; }
+    else if (a === 'cal-confirm') {
+      var p = state.plans.filter(function (x) { return x.id === ui.addPlan; })[0];
       if (!p) return;
       var dup = state.schedule.some(function (x) { return x.date === t.dataset.date && x.planId === p.id && !x.repeat && !ui.repeat; });
       if (!dup) state.schedule.push({ id: uid(), date: t.dataset.date, planId: p.id, name: p.name, repeat: !!ui.repeat });
-      ui.addDay = null;
+      ui.addDay = null; ui.addPlan = null;
       persist();
     } else if (a === 'cal-del') {
       armThen('sch:' + t.dataset.id, function () {
