@@ -446,6 +446,16 @@ nav.tabs button[hidden] { display: none; }
 .prow span:first-child { color: var(--mute); }
 .pname { margin: 0 0 6px; font-size: 1.7rem; }
 .dzone { margin-top: 28px; text-align: center; }
+.recap .rhead { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 12px 0; }
+.recap .rlabel { font-weight: 600; font-size: 1.05rem; }
+.rgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.rstat { background: var(--field); border-radius: var(--r-ctl); padding: 12px; min-width: 0; }
+.rstat .big { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 2rem; line-height: 1; }
+.rstat .big small { font-size: .95rem; color: var(--mute); font-weight: 500; }
+.rstat .cap { color: var(--mute); font-size: .85rem; margin-top: 4px; }
+.rstat .tbar { margin-top: 8px; background: var(--line); }
+.rstat.hot .big { color: var(--pr); }
+.rnote { color: var(--mute); font-size: .8rem; margin: 10px 0 0; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -487,7 +497,7 @@ nav.tabs button[hidden] { display: none; }
 
   function freshState() { var s = { entries: [], workouts: [], plans: [], schedule: [], meals: [], calTarget: 0, calc: { sex: 'm', imp: false, act: 2, goal: 'lose', age: null, cm: null, kg: null }, bench: {}, targets: {}, bodyKg: 0, active: null, unit: 'kg' }; s.loaded = false; return s; }
   var state = freshState();
-  function freshUi() { var u = { tab: 'plans', sel: null, summary: null, drafts: {}, newEx: '', err: null, armed: null, histShown: 15, focus: null, edit: null, planSaved: null, open: {}, month: null, selDay: null, addDay: null, repeat: false, mealDay: null, mealErr: '', mealDraft: { name: '', kcal: '', p: '', c: '', f: '', d: {} }, calcOpen: false, calcShown: false, calcErr: '', calcDraft: { age: '', h: '', hin: '', w: '' }, scan: null, scanAll: false, openMeal: {}, moreOpen: false, dayAll: false, newCardio: false, benchAsk: null, benchMsg: '', mealCat: null, tgtOpen: false, tgtMore: false }; u.importOffer = null; u.importMsg = ''; return u; }
+  function freshUi() { var u = { rc: { per: 'week', off: 0 }, tab: 'plans', sel: null, summary: null, drafts: {}, newEx: '', err: null, armed: null, histShown: 15, focus: null, edit: null, planSaved: null, open: {}, month: null, selDay: null, addDay: null, repeat: false, mealDay: null, mealErr: '', mealDraft: { name: '', kcal: '', p: '', c: '', f: '', d: {} }, calcOpen: false, calcShown: false, calcErr: '', calcDraft: { age: '', h: '', hin: '', w: '' }, scan: null, scanAll: false, openMeal: {}, moreOpen: false, dayAll: false, newCardio: false, benchAsk: null, benchMsg: '', mealCat: null, tgtOpen: false, tgtMore: false }; u.importOffer = null; u.importMsg = ''; return u; }
   var ui = freshUi();
   var writeQueue = Promise.resolve();
 
@@ -2404,6 +2414,87 @@ nav.tabs button[hidden] { display: none; }
     return html;
   }
 
+  /* ---------- Recaps ---------- */
+  function recapRange() {
+    var r = ui.rc || (ui.rc = { per: 'week', off: 0 });
+    var t = parseD(today()), a, b, label;
+    if (r.per === 'week') {
+      var back = (t.getDay() + 6) % 7;
+      a = new Date(t.getFullYear(), t.getMonth(), t.getDate() - back + r.off * 7);
+      b = new Date(a.getFullYear(), a.getMonth(), a.getDate() + 6);
+      label = r.off === 0 ? 'This week' : r.off === -1 ? 'Last week' : fmtDate(dstr(a)) + ' to ' + fmtDate(dstr(b));
+    } else if (r.per === 'month') {
+      a = new Date(t.getFullYear(), t.getMonth() + r.off, 1);
+      b = new Date(a.getFullYear(), a.getMonth() + 1, 0);
+      label = a.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+    } else {
+      a = new Date(t.getFullYear() + r.off, 0, 1);
+      b = new Date(a.getFullYear(), 11, 31);
+      label = String(a.getFullYear());
+    }
+    return { from: dstr(a), to: dstr(b), label: label };
+  }
+  // Counts what happened between two dates (inclusive). Days after today do not count towards "of N days".
+  function recapStats(from, to) {
+    var t0 = today(), end = to > t0 ? t0 : to;
+    var days = 0;
+    if (end >= from) days = Math.round((parseD(end) - parseD(from)) / 86400000) + 1;
+    var activeId = state.active ? state.active.id : null;
+    var lifted = {}, wk = {};
+    state.entries.forEach(function (e) {
+      if (e.cardio || e.date < from || e.date > to || (activeId && e.wid === activeId)) return;
+      lifted[e.date] = true;
+      wk[e.wid || 'd:' + e.date] = true;
+    });
+    var flags = analyze(state.entries), prs = {};
+    state.entries.forEach(function (e) {
+      if (e.date < from || e.date > to || (activeId && e.wid === activeId)) return;
+      var f = flags[e.id];
+      if (f && f.types.length) prs[(e.wid || e.date) + '|' + key(e.ex)] = true;
+    });
+    var byDay = {};
+    state.meals.forEach(function (m) { if (m.date >= from && m.date <= to) (byDay[m.date] || (byDay[m.date] = [])).push(m); });
+    var kt = tgt('kcal'), pt = tgt('p'), kcalHit = 0, protHit = 0, logged = 0;
+    Object.keys(byDay).forEach(function (d) {
+      var tot = mealTotals(byDay[d]);
+      logged++;
+      if (kt > 0 && tot.kcal >= kt * 0.9 && tot.kcal <= kt * 1.1) kcalHit++;
+      if (pt > 0 && tot.p >= pt) protHit++;
+    });
+    return { days: days, lifted: Object.keys(lifted).length, workouts: Object.keys(wk).length, prs: Object.keys(prs).length,
+      logged: logged, kcalHit: kcalHit, protHit: protHit, hasK: kt > 0, hasP: pt > 0 };
+  }
+  function recapHTML() {
+    var r = ui.rc || (ui.rc = { per: 'week', off: 0 }), rg = recapRange(), st = recapStats(rg.from, rg.to);
+    function tile(big, of, cap, pct, hot) {
+      return '<div class="rstat' + (hot ? ' hot' : '') + '"><div class="big">' + big + (of ? ' <small>' + of + '</small>' : '') + '</div><div class="cap">' + cap + '</div>' +
+        (pct !== null ? '<div class="tbar"><i style="width:' + Math.min(100, pct) + '%"></i></div>' : '') + '</div>';
+    }
+    function pc(n) { return st.days > 0 ? Math.round(n / st.days * 100) : 0; }
+    var per = [['week', 'Week'], ['month', 'Month'], ['year', 'Year']];
+    var h = '<div class="card recap"><h3>Recap</h3>' +
+      '<div class="unit" role="group" aria-label="Recap period">' + per.map(function (o) {
+        return '<button type="button" data-a="rc-per" data-v="' + o[0] + '" aria-pressed="' + (r.per === o[0]) + '">' + o[1] + '</button>';
+      }).join('') + '</div>' +
+      '<div class="rhead"><button type="button" class="secondary" data-a="rc-nav" data-v="-1" aria-label="Previous">\u2039</button><span class="rlabel">' + esc(rg.label) + '</span>' +
+      '<button type="button" class="secondary" data-a="rc-nav" data-v="1" aria-label="Next"' + (r.off >= 0 ? ' disabled' : '') + '>\u203A</button></div>' +
+      '<div class="rgrid">' +
+      tile(st.lifted, 'of ' + st.days + ' days', 'Days lifted' + (st.workouts ? ' \u00B7 ' + st.workouts + (st.workouts === 1 ? ' workout' : ' workouts') : ''), pc(st.lifted)) +
+      tile(st.prs, '', st.prs === 1 ? 'PR' : 'PRs', null, st.prs > 0) +
+      tile(st.hasK ? st.kcalHit : '-', st.hasK ? 'of ' + st.days + ' days' : '', 'Calories on target', st.hasK ? pc(st.kcalHit) : null) +
+      tile(st.hasP ? st.protHit : '-', st.hasP ? 'of ' + st.days + ' days' : '', 'Protein goal hit', st.hasP ? pc(st.protHit) : null) +
+      '</div>' +
+      '<p class="rnote">' + (st.hasK || st.hasP ? 'Calories on target means within 10% of your calorie target. Only days with meals logged count (' + st.logged + ' in this period).'
+        : 'Add your weight on this page to get food targets for the recap.') + ' A PR counts once per lift per workout.</p></div>';
+    return h;
+  }
+  function recapAction(a, t) {
+    var r = ui.rc || (ui.rc = { per: 'week', off: 0 });
+    if (a === 'rc-per') { if (r.per !== t.dataset.v) { r.per = t.dataset.v; r.off = 0; } }
+    else if (a === 'rc-nav') r.off = Math.min(0, r.off + Number(t.dataset.v));
+    render();
+  }
+
   /* ---------- Profile tab ---------- */
   function profileCard() {
     var c = state.calc || {}, has = !!c.name;
@@ -2441,7 +2532,7 @@ nav.tabs button[hidden] { display: none; }
     render();
   }
   function profileHTML() {
-    var h = '<h2 class="pagetitle">Profile</h2>' + profileCard();
+    var h = '<h2 class="pagetitle">Profile</h2>' + profileCard() + recapHTML();
     var rec = recordsHTML();
     h += rec ? '<h2 class="pagetitle" style="margin-top:28px">Records</h2>' + rec : '<p class="sub" style="margin-top:20px">Your records will show up here after you finish a workout.</p>';
     return h + footHTML();
@@ -2625,6 +2716,7 @@ nav.tabs button[hidden] { display: none; }
     } else if (a === 'start') startWorkout(t.dataset.plan);
     else if (a.indexOf('auth-') === 0) authAction(a, t);
     else if (a.indexOf('pf-') === 0) profileAction(a);
+    else if (a.indexOf('rc-') === 0) recapAction(a, t);
     else if (a.indexOf('tgt-') === 0) tgtAction(a, t);
     else if (a.indexOf('scan-') === 0) scanAction(a);
     else if (a.indexOf('calc-') === 0) calcAction(a, t);
