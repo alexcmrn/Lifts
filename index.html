@@ -363,6 +363,35 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .seg3 { display: flex; }
 .seg3 button { flex: 1; min-width: 0; }
 .sect h4 .chip { vertical-align: 1px; }
+.subtabs { margin-bottom: 4px; }
+.lbctl { display: flex; flex-direction: column; gap: 8px; }
+.lbctl .unit button { font-size: .85rem; }
+.lb { list-style: none; margin: 14px 0 0; padding: 0 14px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--shadow); transition: opacity .2s; }
+.lb.stale { opacity: .55; }
+.lbrow { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.lbrow:first-child { border-top: 0; }
+.lbrow.me { margin: 0 -14px; padding: 10px 14px; background: var(--pr-soft); }
+.lbrow.me:first-child { border-radius: var(--r-card) var(--r-card) 0 0; }
+.lbrow.me:last-child { border-radius: 0 0 var(--r-card) var(--r-card); }
+.lbrow.me:only-child { border-radius: var(--r-card); }
+.rank { width: 28px; height: 28px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; font-weight: 750; font-size: .9rem; color: var(--mute); font-variant-numeric: tabular-nums; }
+.rank.r1 { background: linear-gradient(135deg, #FFD86B, #E3A21A); color: #3B2A00; }
+.rank.r2 { background: linear-gradient(135deg, #E9EBEF, #A9AFB9); color: #23262B; }
+.rank.r3 { background: linear-gradient(135deg, #F2B98B, #B8723F); color: #2E1605; }
+.lbrow .pbtn { cursor: default; }
+.lbrow button.pbtn { cursor: pointer; }
+.lbv { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; line-height: 1.1; }
+.lbv .num { font-size: 1.2rem; font-weight: 750; }
+.lbv small { color: var(--mute); font-size: .75rem; }
+.moved {
+  display: flex; flex-direction: column; gap: 2px; padding: 20px var(--pad); margin-bottom: 10px;
+  border-radius: var(--r-card); background: var(--ink); color: var(--bg); box-shadow: var(--shadow-lg);
+}
+.moved .l { font-size: .85rem; font-weight: 600; opacity: .7; }
+.moved .num { font-size: 3rem; font-weight: 800; line-height: 1.05; letter-spacing: -.05em; }
+.moved .num small { font-size: 1.1rem; font-weight: 600; letter-spacing: 0; margin-left: 6px; opacity: .7; }
+.moved .cmp { align-self: flex-start; margin-top: 8px; padding: 4px 10px; border-radius: var(--r-pill); font-size: .8rem; font-weight: 650; background: color-mix(in srgb, var(--bg) 14%, transparent); }
+.moved .cmp.up { background: var(--ok); color: #04210F; }
 
 /* ---------- workout: idle ---------- */
 .idle { padding: 22px var(--pad) 18px; }
@@ -794,7 +823,7 @@ tr.sel .liftbtn { color: var(--pr); text-decoration-color: var(--pr); }
   function shareDefaults() { return { workouts: 'friends', meals: 'private', plans: 'friends', body: 'private' }; }
   function freshState() { var s = { entries: [], workouts: [], plans: [], schedule: [], meals: [], calTarget: 0, calc: { sex: 'm', imp: false, act: 2, goal: 'lose', age: null, cm: null, kg: null }, bench: {}, targets: {}, bodyKg: 0, active: null, unit: 'kg' }; s.loaded = false; s.username = ''; s.unameReady = false; s.sharing = shareDefaults(); s.socialReady = false; s.verified = false; return s; }
   var state = freshState();
-  function freshUi() { var u = { addPlan: null, policy: false, rc: { per: 'week', off: 0 }, tab: 'plans', sel: null, summary: null, drafts: {}, newEx: '', err: null, armed: null, histShown: 15, focus: null, edit: null, planSaved: null, open: {}, month: null, selDay: null, addDay: null, repeat: false, mealDay: null, mealErr: '', mealDraft: { name: '', kcal: '', p: '', c: '', f: '', d: {} }, calcOpen: false, calcShown: false, calcErr: '', calcDraft: { age: '', h: '', hin: '', w: '' }, scan: null, scanAll: false, openMeal: {}, moreOpen: false, dayAll: false, newCardio: false, benchAsk: null, benchMsg: '', mealCat: null, tgtOpen: false, tgtMore: false }; u.importOffer = null; u.importMsg = ''; u.shareErr = ''; u.fr = { q: '', results: null, searching: false, searchErr: '', list: null, loading: false, err: '', view: null, viewLoading: false, viewU: null, busy: {}, shown: 10 }; return u; }
+  function freshUi() { var u = { addPlan: null, policy: false, rc: { per: 'week', off: 0 }, tab: 'plans', sel: null, summary: null, drafts: {}, newEx: '', err: null, armed: null, histShown: 15, focus: null, edit: null, planSaved: null, open: {}, month: null, selDay: null, addDay: null, repeat: false, mealDay: null, mealErr: '', mealDraft: { name: '', kcal: '', p: '', c: '', f: '', d: {} }, calcOpen: false, calcShown: false, calcErr: '', calcDraft: { age: '', h: '', hin: '', w: '' }, scan: null, scanAll: false, openMeal: {}, moreOpen: false, dayAll: false, newCardio: false, benchAsk: null, benchMsg: '', mealCat: null, tgtOpen: false, tgtMore: false }; u.importOffer = null; u.importMsg = ''; u.shareErr = ''; u.fr = { q: '', results: null, searching: false, searchErr: '', list: null, loading: false, err: '', view: null, viewLoading: false, viewU: null, busy: {}, shown: 10, pane: 'friends', board: null, boardLoading: false, boardErr: '', metric: 'volume', period: 'week' }; return u; }
   var ui = freshUi();
   var writeQueue = Promise.resolve();
 
@@ -1683,6 +1712,23 @@ tr.sel .liftbtn { color: var(--pr); text-decoration-color: var(--pr); }
     return b.total > 0 ? '<p class="sub" style="margin:2px 0 6px">About ' + fmtK(b.total) + ' kcal burned (estimate)</p>' : '';
   }
 
+  // Weight x reps for working and drop sets, the same total the leaderboard uses.
+  function volOf(wid) {
+    return state.entries.reduce(function (s, e) { return e.wid === wid && !e.cardio && e.type !== 'warmup' ? s + e.kg * e.reps : s; }, 0);
+  }
+  function movedHTML(w, vol) {
+    if (!(vol > 0)) return '';
+    var prev = w.plan ? state.workouts.filter(function (x) { return x.id !== w.id && x.plan === w.plan && x.start < w.start; })
+      .sort(function (a, b) { return b.start - a.start; })[0] : null;
+    var pv = prev ? volOf(prev.id) : 0, cmp = '';
+    if (pv > 0) {
+      var pct = Math.round((vol - pv) / pv * 100);
+      cmp = pct === 0 ? '<span class="cmp">Same as your last ' + esc(w.plan) + '</span>'
+        : '<span class="cmp ' + (pct > 0 ? 'up' : 'down') + '">' + (pct > 0 ? '+' : '\u2212') + Math.abs(pct) + '% vs your last ' + esc(w.plan) + '</span>';
+    }
+    return '<div class="moved"><span class="l">Total weight moved</span><span class="num">' + Math.round(toDisp(vol)).toLocaleString('en-GB') +
+      '<small>' + state.unit + '</small></span>' + cmp + '</div>';
+  }
   function summaryHTML(w) {
     var flags = analyze(state.entries);
     var all = state.entries.filter(function (e) { return e.wid === w.id; }).sort(cmpEntries);
@@ -1692,11 +1738,10 @@ tr.sel .liftbtn { color: var(--pr); text-decoration-color: var(--pr); }
     var infos = groups.map(function (g) { return { g: g, p: exPRs(g.sets, flags) }; });
     var total = infos.reduce(function (s, x) { return s + x.p.lines.length; }, 0);
 
-    var html = '<h2>' + esc(w.plan ? w.plan + ' complete' : 'Workout complete') + '</h2><div class="stats">' +
+    var html = '<h2>' + esc(w.plan ? w.plan + ' complete' : 'Workout complete') + '</h2>' + movedHTML(w, vol) + '<div class="mstats">' +
       '<div class="stat"><span class="num">' + fmtDur(w.end - w.start) + '</span><span class="l">Time</span></div>' +
       '<div class="stat"><span class="num">' + groups.length + '</span><span class="l">' + (groups.length === 1 ? 'Exercise' : 'Exercises') + '</span></div>' +
-      '<div class="stat"><span class="num">' + lifted.length + '</span><span class="l">' + (lifted.length === 1 ? 'Set' : 'Sets') + '</span></div>' +
-      '<div class="stat"><span class="num">' + Math.round(toDisp(vol)).toLocaleString('en-GB') + '</span><span class="l">Volume (' + state.unit + ')</span></div></div>';
+      '<div class="stat"><span class="num">' + lifted.length + '</span><span class="l">' + (lifted.length === 1 ? 'Set' : 'Sets') + '</span></div></div>';
 
     if (total > 0) {
       html += '<div class="banner pr" role="status"><div class="t">' + (total === 1 ? 'You hit a PR' : 'You hit ' + total + ' PRs') + '</div>';
@@ -2965,6 +3010,51 @@ tr.sel .liftbtn { color: var(--pr); text-decoration-color: var(--pr); }
     if (!fr.results.length) return fr.searching ? '<p class="sub">Searching...</p>' : '<p class="sub">No one found with a username starting @' + esc(q) + '.</p>';
     return '<div class="plist">' + fr.results.map(function (c) { return personRow(c, false); }).join('') + '</div>';
   }
+  /* ---- leaderboard (friends_leaderboard in supabase/leaderboard.sql) ---- */
+  var LB_METRICS = { volume: 'Weight moved', workouts: 'Workouts' };
+  var LB_PERIODS = { week: 'This week', month: 'This month', all: 'All time' };
+  function loadBoard() {
+    var fr = ui.fr, period = fr.period;
+    fr.boardLoading = true;
+    sb.rpc('friends_leaderboard', { period: period }).then(function (r) {
+      if (fr.period !== period) return;
+      fr.boardLoading = false;
+      fr.boardErr = r.error ? (/could not find the function|does not exist|schema cache/i.test(r.error.message || '') ? 'The leaderboard is not set up in Supabase yet. Run supabase/leaderboard.sql first.' : friendly(r.error)) : '';
+      fr.board = r.error ? [] : (r.data || []);
+      if (ui.tab === 'friends' && fr.pane === 'board' && !fr.view && !fr.viewLoading) render();
+    }, function (e) { fr.boardLoading = false; fr.boardErr = friendly(e); fr.board = []; if (ui.tab === 'friends') render(); });
+  }
+  function segHTML(action, opts, cur, label) {
+    return '<div class="unit seg3" role="group" aria-label="' + label + '">' + Object.keys(opts).map(function (k) {
+      return '<button type="button" data-a="' + action + '" data-v="' + k + '" aria-pressed="' + (cur === k) + '">' + opts[k] + '</button>';
+    }).join('') + '</div>';
+  }
+  function boardValue(c, m) {
+    return m === 'workouts'
+      ? { n: String(c.workouts), u: c.workouts === 1 ? 'workout' : 'workouts' }
+      : { n: Math.round(toDisp(+c.volume_kg || 0)).toLocaleString('en-GB'), u: state.unit };
+  }
+  function boardHTML() {
+    var fr = ui.fr, m = fr.metric;
+    if (fr.board === null && !fr.boardLoading) setTimeout(loadBoard, 0);
+    var h = '<div class="lbctl">' + segHTML('fr-metric', LB_METRICS, m, 'Rank by') + segHTML('fr-period', LB_PERIODS, fr.period, 'Time period') + '</div>';
+    if (fr.boardErr) return h + '<p class="err">' + esc(fr.boardErr) + '</p>';
+    if (!fr.board) return h + '<p class="sub">Loading leaderboard...</p>';
+    var key2 = m === 'workouts' ? 'workouts' : 'volume_kg';
+    var rows = fr.board.slice().sort(function (a, b) { return (+b[key2] - +a[key2]) || String(a.name).localeCompare(String(b.name)); });
+    var rank = 0, last = null;
+    h += '<ol class="lb' + (fr.boardLoading ? ' stale' : '') + '">' + rows.map(function (c, i) {
+      if (+c[key2] !== last) { rank = i + 1; last = +c[key2]; }
+      var v = boardValue(c, m), other = boardValue(c, m === 'workouts' ? 'volume' : 'workouts');
+      var who = avatarHTML(c) + '<span class="pmeta"><span class="pn"><span class="pnt">' + esc(c.me ? 'You' : c.name) + '</span>' + tickHTML(c.verified) + '</span>' +
+        '<span class="sub">' + other.n + ' ' + other.u + '</span></span>';
+      return '<li class="lbrow' + (c.me ? ' me' : '') + '"><span class="rank' + (rank <= 3 && +c[key2] > 0 ? ' r' + rank : '') + '" aria-label="Rank ' + rank + '">' + rank + '</span>' +
+        (c.me ? '<span class="pbtn">' + who + '</span>' : '<button type="button" class="pbtn" data-a="fr-open" data-u="' + esc(c.username) + '">' + who + '</button>') +
+        '<span class="lbv"><b class="num">' + v.n + '</b><small>' + v.u + '</small></span></li>';
+    }).join('') + '</ol>';
+    if (rows.length < 2) h += '<p class="sub" style="margin-top:12px">Add friends to see how you stack up.</p>';
+    return h + '<p class="rnote">Weight moved counts working and drop sets, not warmups or cardio. Friends who keep their workouts to themselves are not shown.</p>';
+  }
   function friendsHTML() {
     var fr = ui.fr;
     if (fr.view || fr.viewLoading) return friendViewHTML();
@@ -2972,6 +3062,8 @@ tr.sel .liftbtn { color: var(--pr); text-decoration-color: var(--pr); }
     if (!state.socialReady) return h + '<div class="card"><h3>Friends are not switched on yet</h3><p class="sub">Run supabase/friends.sql in the Supabase SQL Editor, then reload the app.</p></div>';
     if (!state.username) return h + '<div class="card"><h3>Choose a username first</h3><p class="sub" style="margin:0 0 12px">People find you by your @username.</p>' +
       '<button type="button" class="primary" data-a="fr-needname">Choose a username</button></div>';
+    h += segHTML('fr-pane', { friends: 'Friends', board: 'Leaderboard' }, fr.pane, 'Friends or leaderboard').replace('unit seg3', 'unit seg3 subtabs');
+    if (fr.pane === 'board') return h + boardHTML();
     if (fr.list === null && !fr.loading) setTimeout(loadFriends, 0);
     h += '<div class="field"><label for="frq">Find people</label><div class="ufield"><span aria-hidden="true">@</span><input id="frq" type="search" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="username" value="' + esc(fr.q) + '"></div></div>' +
       '<div id="frres" aria-live="polite">' + resultsHTML() + '</div>';
@@ -3004,6 +3096,9 @@ tr.sel .liftbtn { color: var(--pr); text-decoration-color: var(--pr); }
     if (a === 'fr-open') { openProfile(u); return; }
     if (a === 'fr-back') { fr.view = null; fr.viewLoading = false; fr.viewU = null; render(); window.scrollTo(0, 0); return; }
     if (a === 'fr-more') { fr.shown += 10; render(); return; }
+    if (a === 'fr-pane') { fr.pane = t.dataset.v; if (fr.pane === 'board') loadBoard(); render(); return; }
+    if (a === 'fr-metric') { fr.metric = t.dataset.v; render(); return; }
+    if (a === 'fr-period') { if (fr.period === t.dataset.v) return; fr.period = t.dataset.v; loadBoard(); render(); return; }
     if (a === 'fr-share') {
       if (state.sharing[t.dataset.k] === t.dataset.v) return;
       state.sharing[t.dataset.k] = t.dataset.v;
@@ -3023,6 +3118,7 @@ tr.sel .liftbtn { color: var(--pr); text-decoration-color: var(--pr); }
         (fr.results || []).forEach(function (c) { if (c.username === u) c.relation = r.data; });
         if (fr.view && fr.view.username === u) openProfile(u, true);
         loadFriends();
+        fr.board = null;
         render();
       }, function (e) { delete fr.busy[u]; fr.err = rpcErr(e); render(); });
     }
@@ -3385,7 +3481,7 @@ tr.sel .liftbtn { color: var(--pr); text-decoration-color: var(--pr); }
       persist(); render();
     } else if (a === 'tab') {
       ui.tab = t.dataset.tab; ui.err = null;
-      if (ui.tab === 'friends') { ui.fr.view = null; ui.fr.viewLoading = false; ui.fr.viewU = null; if (state.socialReady && state.username) loadFriends(); }
+      if (ui.tab === 'friends') { ui.fr.view = null; ui.fr.viewLoading = false; ui.fr.viewU = null; if (state.socialReady && state.username) { loadFriends(); if (ui.fr.pane === 'board') loadBoard(); } }
       render();
     } else if (a === 'start') startWorkout(t.dataset.plan);
     else if (a.indexOf('auth-') === 0) authAction(a, t);
