@@ -169,6 +169,7 @@ nav.tabs button[hidden] { display: none; }
 #tab-plans { --ico: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4.5' y='3.5' width='15' height='17.5' rx='3'/%3E%3Cpath d='M8.5 8.5h7M8.5 12.5h7M8.5 16.5h4'/%3E%3C/svg%3E"); }
 #tab-calendar { --ico: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3.5' y='5' width='17' height='15.5' rx='3'/%3E%3Cpath d='M3.5 10h17M8 3v4M16 3v4'/%3E%3C/svg%3E"); }
 #tab-meals { --ico: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 3v18M4.5 3v5a2.5 2.5 0 0 0 5 0V3M17.5 21V3c-2.3 1.2-3.7 3.8-3.7 7.5V14h3.7'/%3E%3C/svg%3E"); }
+#tab-friends { --ico: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='9' cy='8.5' r='3.5'/%3E%3Cpath d='M2.5 20c.5-3.6 3.1-5.5 6.5-5.5s6 1.9 6.5 5.5'/%3E%3Cpath d='M15.5 5.2a3.5 3.5 0 0 1 0 6.6M17.5 14.8c2.2.6 3.6 2.4 4 5.2'/%3E%3C/svg%3E"); }
 #tab-profile { --ico: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='8' r='4'/%3E%3Cpath d='M4.5 20.5c.6-3.9 3.6-6 7.5-6s6.9 2.1 7.5 6'/%3E%3C/svg%3E"); }
 .live {
   position: absolute; top: 6px; left: calc(50% + 8px);
@@ -318,6 +319,50 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .ufield input { padding-left: 32px; }
 .field .hint { color: var(--mute); font-size: .78rem; }
 .handle { color: var(--mute); font-weight: 550; margin: -2px 0 8px; }
+/* friends */
+.vtick {
+  display: inline-block; width: 18px; height: 18px; margin-left: 6px; vertical-align: -2px; flex-shrink: 0;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%231D9BF0' d='M12 1.5l2.6 1.9 3.2-.2 1 3.1 2.6 1.9-1 3.1 1 3.1-2.6 1.9-1 3.1-3.2-.2L12 22.5l-2.6-1.9-3.2.2-1-3.1-2.6-1.9 1-3.1-1-3.1 2.6-1.9 1-3.1 3.2.2z'/%3E%3Cpath d='M7.6 12.2l3 3 5.8-6' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.pname .vtick { width: 22px; height: 22px; vertical-align: -3px; }
+.avatar {
+  width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #FF7A45, #D2341C 60%, #B8204A); color: #fff; font-weight: 750; font-size: 1.05rem;
+}
+.avatar.big { width: 64px; height: 64px; font-size: 1.6rem; }
+.plist { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--shadow); padding: 0 14px; margin-top: 8px; }
+.person { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); }
+.person:first-child { border-top: 0; }
+.pbtn { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 0; background: none; border: 0; color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.pmeta { display: flex; flex-direction: column; min-width: 0; }
+.pmeta .sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pn { font-weight: 650; display: flex; align-items: center; min-width: 0; }
+.pnt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.pact { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.pact .chip { margin-left: 0; }
+.backbtn { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0; background: none; border: 0; color: var(--pr); font: 600 .95rem var(--font); cursor: pointer; }
+.backbtn::before { content: '\2039'; font-size: 1.5rem; line-height: 1; margin-top: -3px; }
+.phead { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; align-items: center; }
+.phead .pname { margin: 0; font-size: 1.4rem; }
+.phead .handle { margin: 2px 0 0; }
+.pheadact { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 10px; }
+.pheadact .chip { margin-left: 0; }
+.locked { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-radius: var(--r-ctl); background: var(--field); color: var(--mute); font-size: .9rem; }
+.lock {
+  width: 16px; height: 16px; flex-shrink: 0; background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round'%3E%3Crect x='5' y='11' width='14' height='10' rx='2.5'/%3E%3Cpath d='M8 11V8a4 4 0 0 1 8 0v3'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round'%3E%3Crect x='5' y='11' width='14' height='10' rx='2.5'/%3E%3Cpath d='M8 11V8a4 4 0 0 1 8 0v3'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.fwk { margin-top: 10px; padding-bottom: 8px; }
+.fwh { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 2px; }
+.fwh b { font-weight: 650; letter-spacing: -.01em; }
+.sect .more { width: 100%; margin-top: 10px; }
+.shrow { display: flex; flex-direction: column; gap: 8px; padding: 12px 0; border-top: 1px solid var(--line); }
+.shrow:nth-child(3) { border-top: 0; }
+.shrow > span { font-weight: 550; font-size: .95rem; }
+.seg3 { display: flex; }
+.seg3 button { flex: 1; min-width: 0; }
+.sect h4 .chip { vertical-align: 1px; }
 
 /* ---------- workout: idle ---------- */
 .idle { padding: 22px var(--pad) 18px; }
@@ -724,6 +769,7 @@ tr.sel .liftbtn { color: var(--pr); text-decoration-color: var(--pr); }
     <button type="button" role="tab" data-a="tab" data-tab="plans" id="tab-plans">Plans</button>
     <button type="button" role="tab" data-a="tab" data-tab="calendar" id="tab-calendar">Calendar</button>
     <button type="button" role="tab" data-a="tab" data-tab="meals" id="tab-meals">Meals</button>
+    <button type="button" role="tab" data-a="tab" data-tab="friends" id="tab-friends">Friends</button>
     <button type="button" role="tab" data-a="tab" data-tab="profile" id="tab-profile">Profile</button>
     
   </nav>
@@ -745,9 +791,10 @@ tr.sel .liftbtn { color: var(--pr); text-decoration-color: var(--pr); }
     'Romanian deadlift', 'Incline bench press', 'Pull-up', 'Dip', 'Hip thrust', 'Lat pulldown'];
   var REP_TARGETS = [1, 3, 5, 8, 10];
 
-  function freshState() { var s = { entries: [], workouts: [], plans: [], schedule: [], meals: [], calTarget: 0, calc: { sex: 'm', imp: false, act: 2, goal: 'lose', age: null, cm: null, kg: null }, bench: {}, targets: {}, bodyKg: 0, active: null, unit: 'kg' }; s.loaded = false; s.username = ''; s.unameReady = false; return s; }
+  function shareDefaults() { return { workouts: 'friends', meals: 'private', plans: 'friends', body: 'private' }; }
+  function freshState() { var s = { entries: [], workouts: [], plans: [], schedule: [], meals: [], calTarget: 0, calc: { sex: 'm', imp: false, act: 2, goal: 'lose', age: null, cm: null, kg: null }, bench: {}, targets: {}, bodyKg: 0, active: null, unit: 'kg' }; s.loaded = false; s.username = ''; s.unameReady = false; s.sharing = shareDefaults(); s.socialReady = false; s.verified = false; return s; }
   var state = freshState();
-  function freshUi() { var u = { addPlan: null, policy: false, rc: { per: 'week', off: 0 }, tab: 'plans', sel: null, summary: null, drafts: {}, newEx: '', err: null, armed: null, histShown: 15, focus: null, edit: null, planSaved: null, open: {}, month: null, selDay: null, addDay: null, repeat: false, mealDay: null, mealErr: '', mealDraft: { name: '', kcal: '', p: '', c: '', f: '', d: {} }, calcOpen: false, calcShown: false, calcErr: '', calcDraft: { age: '', h: '', hin: '', w: '' }, scan: null, scanAll: false, openMeal: {}, moreOpen: false, dayAll: false, newCardio: false, benchAsk: null, benchMsg: '', mealCat: null, tgtOpen: false, tgtMore: false }; u.importOffer = null; u.importMsg = ''; return u; }
+  function freshUi() { var u = { addPlan: null, policy: false, rc: { per: 'week', off: 0 }, tab: 'plans', sel: null, summary: null, drafts: {}, newEx: '', err: null, armed: null, histShown: 15, focus: null, edit: null, planSaved: null, open: {}, month: null, selDay: null, addDay: null, repeat: false, mealDay: null, mealErr: '', mealDraft: { name: '', kcal: '', p: '', c: '', f: '', d: {} }, calcOpen: false, calcShown: false, calcErr: '', calcDraft: { age: '', h: '', hin: '', w: '' }, scan: null, scanAll: false, openMeal: {}, moreOpen: false, dayAll: false, newCardio: false, benchAsk: null, benchMsg: '', mealCat: null, tgtOpen: false, tgtMore: false }; u.importOffer = null; u.importMsg = ''; u.shareErr = ''; u.fr = { q: '', results: null, searching: false, searchErr: '', list: null, loading: false, err: '', view: null, viewLoading: false, viewU: null, busy: {}, shown: 10 }; return u; }
   var ui = freshUi();
   var writeQueue = Promise.resolve();
 
@@ -981,7 +1028,9 @@ tr.sel .liftbtn { color: var(--pr); text-decoration-color: var(--pr); }
     return Promise.all([fetchAll('plans'), fetchAll('workouts'), fetchAll('schedule'), fetchAll('sets'), fetchAll('meals'),
       sb.from('profiles').select('*').limit(1).then(chk),
       // Optional until supabase/usernames.sql has been run, so a missing table must not stop the app loading.
-      sb.from('usernames').select('username').eq('user_id', user.id).limit(1).then(function (x) { return x; }, function (e) { return { error: e }; })]).then(function (r) {
+      sb.from('usernames').select('username').eq('user_id', user.id).limit(1).then(function (x) { return x; }, function (e) { return { error: e }; }),
+      sb.from('sharing').select('workouts, meals, plans, body').eq('user_id', user.id).limit(1).then(function (x) { return x; }, function (e) { return { error: e }; }),
+      sb.rpc('am_i_verified').then(function (x) { return x; }, function (e) { return { error: e }; })]).then(function (r) {
       var s = freshState();
       var prof = (r[5].data || [])[0];
       var planName = {};
@@ -1022,6 +1071,10 @@ tr.sel .liftbtn { color: var(--pr); text-decoration-color: var(--pr); }
       var un = r[6] || {};
       s.unameReady = !un.error;
       s.username = !un.error && un.data && un.data[0] ? String(un.data[0].username) : '';
+      var sh = r[7] || {}, row = !sh.error && sh.data && sh.data[0];
+      s.socialReady = !sh.error;
+      SHARE_KEYS.forEach(function (k) { if (row && SHARE_LV[row[k[0]]]) s.sharing[k[0]] = row[k[0]]; });
+      s.verified = !!(r[8] && !r[8].error && r[8].data === true);
       state = s;
       snapFromState(!!prof);
       state.loaded = true;
@@ -2849,6 +2902,242 @@ tr.sel .liftbtn { color: var(--pr); text-decoration-color: var(--pr); }
     render();
   }
 
+  /* ---------- Friends tab (data comes from the functions in supabase/friends.sql) ---------- */
+  var SHARE_KEYS = [['workouts', 'Workouts and sets'], ['meals', 'Meals and calories'], ['plans', 'Plans and calendar'], ['body', 'Weight, age and gender']];
+  var SHARE_LV = { 'public': 'Public', friends: 'Friends', 'private': 'Only me' };
+  var searchTimer = null;
+  function tickHTML(v) { return v ? '<span class="vtick" role="img" aria-label="Verified" title="Verified"></span>' : ''; }
+  function avatarHTML(c, big) {
+    var n = String(c.name || c.username || '?').trim();
+    return '<span class="avatar' + (big ? ' big' : '') + '" aria-hidden="true">' + esc(n.charAt(0).toUpperCase()) + '</span>';
+  }
+  function rpcErr(e) {
+    var m = (e && e.message) || '';
+    if (/could not find the function|does not exist|schema cache/i.test(m)) return 'Friends are not set up in Supabase yet. Run supabase/friends.sql first.';
+    return friendly(e);
+  }
+  function loadFriends() {
+    var fr = ui.fr;
+    fr.loading = true;
+    sb.rpc('my_friends').then(function (r) {
+      fr.loading = false;
+      if (r.error) { fr.err = rpcErr(r.error); fr.list = []; } else { fr.list = r.data || []; }
+      if (ui.tab === 'friends' && !fr.view && !fr.viewLoading) render();
+    }, function (e) { fr.loading = false; fr.err = rpcErr(e); fr.list = []; if (ui.tab === 'friends') render(); });
+  }
+  function searchTerm() { return ui.fr.q.trim().replace(/^@/, '').toLowerCase(); }
+  // Results are painted into their own box so typing is never interrupted by a re-render.
+  function searchUsers() {
+    var fr = ui.fr, q = searchTerm();
+    clearTimeout(searchTimer);
+    if (q.length < 2) { fr.results = null; fr.searching = false; fr.searchErr = ''; paintResults(); return; }
+    fr.searching = true;
+    searchTimer = setTimeout(function () {
+      sb.rpc('search_users', { q: q }).then(function (r) {
+        if (searchTerm() !== q) return;
+        fr.searching = false;
+        fr.searchErr = r.error ? rpcErr(r.error) : '';
+        fr.results = r.error ? [] : (r.data || []);
+        paintResults();
+      }, function (e) { fr.searching = false; fr.searchErr = rpcErr(e); paintResults(); });
+    }, 250);
+  }
+  function paintResults() { var el = $('frres'); if (el) el.innerHTML = resultsHTML(); }
+  function relButtons(c, inList) {
+    var u = esc(c.username), busy = ui.fr.busy[c.username] ? ' disabled' : '';
+    if (c.relation === 'friends') return inList ? '<span class="chev" aria-hidden="true">\u203A</span>' : '<span class="chip done">Friends</span>';
+    if (c.relation === 'outgoing') return '<span class="chip">Requested</span>' +
+      (inList ? '<button type="button" class="linkbtn mute" data-a="fr-remove" data-u="' + u + '"' + busy + '>Cancel</button>' : '');
+    if (c.relation === 'incoming') return '<button type="button" class="primary small" data-a="fr-add" data-u="' + u + '"' + busy + '>Accept</button>' +
+      '<button type="button" class="linkbtn mute" data-a="fr-remove" data-u="' + u + '"' + busy + '>Decline</button>';
+    return '<button type="button" class="primary small add" data-a="fr-add" data-u="' + u + '"' + busy + ' aria-label="Add @' + u + ' as a friend">Add</button>';
+  }
+  function personRow(c, inList) {
+    return '<div class="person"><button type="button" class="pbtn" data-a="fr-open" data-u="' + esc(c.username) + '">' + avatarHTML(c) +
+      '<span class="pmeta"><span class="pn"><span class="pnt">' + esc(c.name) + '</span>' + tickHTML(c.verified) + '</span><span class="sub">@' + esc(c.username) + '</span></span></button>' +
+      '<div class="pact">' + relButtons(c, inList) + '</div></div>';
+  }
+  function resultsHTML() {
+    var fr = ui.fr, q = searchTerm();
+    if (q.length < 2) return '';
+    if (fr.searchErr) return '<p class="err">' + esc(fr.searchErr) + '</p>';
+    if (!fr.results) return '<p class="sub">Searching...</p>';
+    if (!fr.results.length) return fr.searching ? '<p class="sub">Searching...</p>' : '<p class="sub">No one found with a username starting @' + esc(q) + '.</p>';
+    return '<div class="plist">' + fr.results.map(function (c) { return personRow(c, false); }).join('') + '</div>';
+  }
+  function friendsHTML() {
+    var fr = ui.fr;
+    if (fr.view || fr.viewLoading) return friendViewHTML();
+    var h = '<h2 class="pagetitle">Friends</h2>';
+    if (!state.socialReady) return h + '<div class="card"><h3>Friends are not switched on yet</h3><p class="sub">Run supabase/friends.sql in the Supabase SQL Editor, then reload the app.</p></div>';
+    if (!state.username) return h + '<div class="card"><h3>Choose a username first</h3><p class="sub" style="margin:0 0 12px">People find you by your @username.</p>' +
+      '<button type="button" class="primary" data-a="fr-needname">Choose a username</button></div>';
+    if (fr.list === null && !fr.loading) setTimeout(loadFriends, 0);
+    h += '<div class="field"><label for="frq">Find people</label><div class="ufield"><span aria-hidden="true">@</span><input id="frq" type="search" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="username" value="' + esc(fr.q) + '"></div></div>' +
+      '<div id="frres" aria-live="polite">' + resultsHTML() + '</div>';
+    if (fr.err) h += '<p class="err">' + esc(fr.err) + '</p>';
+    var list = fr.list || [];
+    var by = function (rel) { return list.filter(function (c) { return c.relation === rel; }); };
+    var inc = by('incoming'), mine = by('friends'), out = by('outgoing');
+    var rows = function (l) { return '<div class="plist">' + l.map(function (c) { return personRow(c, true); }).join('') + '</div>'; };
+    if (inc.length) h += '<div class="sect"><h4>Friend requests <span class="chip pr">' + inc.length + '</span></h4>' + rows(inc) + '</div>';
+    h += '<div class="sect"><h4>Your friends' + (mine.length ? ' <span class="chip">' + mine.length + '</span>' : '') + '</h4>' +
+      (mine.length ? rows(mine) : fr.list === null ? '<p class="sub">Loading...</p>' : '<p class="sub">No friends yet. Search for someone\'s @username to add them.</p>') + '</div>';
+    if (out.length) h += '<div class="sect"><h4>Sent requests</h4>' + rows(out) + '</div>';
+    return h;
+  }
+  function openProfile(u, quiet) {
+    var fr = ui.fr;
+    fr.viewU = u;
+    if (!quiet) { fr.view = null; fr.viewLoading = true; fr.shown = 10; render(); window.scrollTo(0, 0); }
+    sb.rpc('view_profile', { uname: u }).then(function (r) {
+      if (fr.viewU !== u) return;
+      fr.viewLoading = false;
+      if (r.error || !r.data) { fr.view = null; fr.err = r.error ? rpcErr(r.error) : 'Could not find @' + u + '.'; }
+      else fr.view = r.data;
+      if (ui.tab === 'friends') render();
+    }, function (e) { if (fr.viewU !== u) return; fr.viewLoading = false; fr.view = null; fr.err = rpcErr(e); if (ui.tab === 'friends') render(); });
+  }
+  function friendsAction(a, t) {
+    var fr = ui.fr, u = t.dataset.u;
+    if (a === 'fr-needname') { ui.tab = 'profile'; profileAction('pf-edit'); return; }
+    if (a === 'fr-open') { openProfile(u); return; }
+    if (a === 'fr-back') { fr.view = null; fr.viewLoading = false; fr.viewU = null; render(); window.scrollTo(0, 0); return; }
+    if (a === 'fr-more') { fr.shown += 10; render(); return; }
+    if (a === 'fr-share') {
+      if (state.sharing[t.dataset.k] === t.dataset.v) return;
+      state.sharing[t.dataset.k] = t.dataset.v;
+      saveSharing();
+      render();
+      return;
+    }
+    if (a === 'fr-add' || a === 'fr-remove') {
+      if (a === 'fr-remove' && t.dataset.confirm && ui.armed !== 'fr:' + u) { ui.armed = 'fr:' + u; render(); return; }
+      ui.armed = null;
+      fr.busy[u] = true;
+      render();
+      sb.rpc('friend_action', { uname: u, act: a === 'fr-add' ? 'add' : 'remove' }).then(function (r) {
+        delete fr.busy[u];
+        if (r.error) { fr.err = rpcErr(r.error); render(); return; }
+        fr.err = '';
+        (fr.results || []).forEach(function (c) { if (c.username === u) c.relation = r.data; });
+        if (fr.view && fr.view.username === u) openProfile(u, true);
+        loadFriends();
+        render();
+      }, function (e) { delete fr.busy[u]; fr.err = rpcErr(e); render(); });
+    }
+  }
+  function saveSharing() {
+    var sh = state.sharing;
+    sb.from('sharing').upsert({ user_id: user.id, workouts: sh.workouts, meals: sh.meals, plans: sh.plans, body: sh.body, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
+      .then(function (r) { var was = ui.shareErr; ui.shareErr = r.error ? friendly(r.error) : ''; if (was !== ui.shareErr) render(); },
+        function (e) { ui.shareErr = friendly(e); render(); });
+  }
+  function privacyHTML() {
+    if (!state.socialReady) return '';
+    var h = '<div class="card"><h3>Privacy</h3><p class="sub" style="margin:-6px 0 4px">Choose who can see each part of your profile. Your name, @username and tick are always visible so people can find you.</p>';
+    SHARE_KEYS.forEach(function (k) {
+      h += '<div class="shrow"><span id="sh-' + k[0] + '">' + k[1] + '</span><div class="unit seg3" role="group" aria-labelledby="sh-' + k[0] + '">' +
+        Object.keys(SHARE_LV).map(function (lv) {
+          return '<button type="button" data-a="fr-share" data-k="' + k[0] + '" data-v="' + lv + '" aria-pressed="' + (state.sharing[k[0]] === lv) + '">' + SHARE_LV[lv] + '</button>';
+        }).join('') + '</div></div>';
+    });
+    if (ui.shareErr) h += '<p class="err">' + esc(ui.shareErr) + '</p>';
+    return h + '</div>';
+  }
+
+  /* ---- someone else's profile ---- */
+  function viewActions(v) {
+    var u = esc(v.username), busy = ui.fr.busy[v.username] ? ' disabled' : '';
+    if (v.relation === 'friends') {
+      var armed = ui.armed === 'fr:' + v.username;
+      return '<span class="chip done">Friends</span><button type="button" class="linkbtn danger mute' + (armed ? ' armed' : '') + '" data-a="fr-remove" data-confirm="1" data-u="' + u + '"' + busy + '>' + (armed ? 'Tap again to remove' : 'Remove friend') + '</button>';
+    }
+    if (v.relation === 'self') return '<span class="chip">This is you</span>';
+    return relButtons(v, true).replace('>Add<', '>Add friend<');
+  }
+  function lockedHTML(title, level, v) {
+    return '<div class="sect"><h4>' + title + '</h4><div class="locked"><span class="lock" aria-hidden="true"></span><span>' +
+      (level === 'private' ? 'Only ' + esc(v.name) + ' can see this.' : 'Only ' + esc(v.name) + '\'s friends can see this.') + '</span></div></div>';
+  }
+  function bodySect(v) {
+    if (!v.body) return lockedHTML('Body', v.sharing.body, v);
+    var b = v.body;
+    return '<div class="sect"><h4>Body</h4><div class="card">' +
+      '<div class="prow"><span>Weight</span><span>' + (+b.weight_kg > 0 ? fmtW(+b.weight_kg) + ' ' + state.unit : '-') + '</span></div>' +
+      '<div class="prow"><span>Age</span><span>' + (b.age ? esc(b.age) : '-') + '</span></div>' +
+      '<div class="prow"><span>Gender</span><span>' + (genderName(b.gender) || '-') + '</span></div></div></div>';
+  }
+  function setText(x) {
+    if (x.cardio) return fmtMins(+x.mins || 0) + ' min';
+    return fmtW(+x.kg) + ' \u00D7 ' + x.reps + (x.type === 'warmup' ? ' (warmup)' : x.type === 'drop' ? ' (drop)' : '');
+  }
+  function workoutsSect(v) {
+    if (!v.workouts) return lockedHTML('Workouts', v.sharing.workouts, v);
+    var ws = v.workouts;
+    if (!ws.length) return '<div class="sect"><h4>Workouts</h4><p class="sub">No workouts yet.</p></div>';
+    var cutoff = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
+    var recent = ws.filter(function (w) { return w.date >= cutoff; });
+    var sets = 0, vol = 0;
+    recent.forEach(function (w) { (w.sets || []).forEach(function (x) { if (!x.cardio && x.type !== 'warmup') { sets++; vol += (+x.kg) * x.reps; } }); });
+    var h = '<div class="sect"><h4>Workouts</h4><div class="mstats">' +
+      '<div class="stat"><span class="num">' + recent.length + '</span><span class="l">Workouts, 30 days</span></div>' +
+      '<div class="stat"><span class="num">' + sets + '</span><span class="l">Sets</span></div>' +
+      '<div class="stat"><span class="num">' + Math.round(toDisp(vol)).toLocaleString('en-GB') + '</span><span class="l">Volume (' + state.unit + ')</span></div></div>';
+    ws.slice(0, ui.fr.shown).forEach(function (w) {
+      var order = [], by = {};
+      (w.sets || []).forEach(function (x) { var k = key(x.exercise); if (!by[k]) { by[k] = { name: x.exercise, sets: [] }; order.push(k); } by[k].sets.push(x); });
+      var dur = Date.parse(w.ended_at) - Date.parse(w.started_at);
+      h += '<div class="card fwk"><div class="fwh"><b>' + esc(w.plan || 'Workout') + '</b><span class="sub">' + fmtDate(w.date, true) + (dur > 0 ? ' \u00B7 ' + fmtDur(dur) : '') + '</span></div>' +
+        (order.length ? order.map(function (k) {
+          return '<div class="exrow"><span class="name">' + esc(by[k].name) + '</span><div class="setline">' +
+            by[k].sets.map(function (x) { return '<span class="s">' + setText(x) + '</span>'; }).join('') + '</div></div>';
+        }).join('') : '<p class="sub">No sets logged.</p>') + '</div>';
+    });
+    if (ws.length > ui.fr.shown) h += '<button type="button" class="secondary more" data-a="fr-more">Show more workouts</button>';
+    return h + '</div>';
+  }
+  function mealsSect(v) {
+    if (!v.meals) return lockedHTML('Meals', v.sharing.meals, v);
+    if (!v.meals.length) return '<div class="sect"><h4>Meals</h4><p class="sub">No meals in the last 2 weeks.</p></div>';
+    var days = [], by = {};
+    v.meals.forEach(function (m) { if (!by[m.date]) { by[m.date] = []; days.push(m.date); } by[m.date].push(m); });
+    var t = +v.cal_target || 0;
+    return '<div class="sect"><h4>Meals</h4><div class="card">' + days.map(function (d) {
+      var tot = { k: 0, p: 0, c: 0, f: 0 };
+      by[d].forEach(function (m) { tot.k += +m.kcal; tot.p += +m.protein; tot.c += +m.carbs; tot.f += +m.fats; });
+      return '<div class="nrow"><div class="nl"><b>' + fmtDate(d, true) + '</b><span class="nv"><b>' + fmtK(tot.k) + '</b>' + (t ? ' / ' + fmtK(t) : '') + ' kcal</span></div>' +
+        barHTML('limit', tot.k, t) +
+        '<p class="sub" style="margin-top:6px">P ' + fmtG(tot.p) + ' \u00B7 C ' + fmtG(tot.c) + ' \u00B7 F ' + fmtG(tot.f) + ' \u00B7 ' + esc(by[d].map(function (m) { return m.name; }).join(', ')) + '</p></div>';
+    }).join('') + '</div></div>';
+  }
+  function plansSect(v) {
+    if (!v.plans) return lockedHTML('Plans', v.sharing.plans, v);
+    var h = '<div class="sect"><h4>Plans</h4>';
+    h += v.plans.length ? '<div class="plans">' + v.plans.map(function (p) {
+      var ex = Array.isArray(p.exercises) ? p.exercises : [];
+      return '<div class="plan"><div class="ptop"><div class="pname">' + esc(p.name) + '</div></div>' + (ex.length ? '<div class="pex">' + ex.map(function (x) {
+        return '<span class="xchip">' + esc(x.name) + '<small>' + esc(x.cardio ? 'cardio' : slotsLabel(planSlots(x))) + '</small></span>';
+      }).join('') + '</div>' : '') + '</div>';
+    }).join('') + '</div>' : '<p class="sub">No plans yet.</p>';
+    var t0 = today();
+    var up = (v.schedule || []).filter(function (x) { return x.repeat || x.date >= t0; });
+    if (up.length) h += '<h4 style="margin-top:18px">Coming up</h4><div class="card">' + up.map(function (x) {
+      var when = x.repeat ? 'Every ' + parseD(x.date).toLocaleDateString('en-GB', { weekday: 'long' }) : fmtDate(x.date, true);
+      return '<div class="tl"><span class="d">' + when + '</span><span class="s">' + esc(x.plan || 'Workout') + '</span></div>';
+    }).join('') + '</div>';
+    return h + '</div>';
+  }
+  function friendViewHTML() {
+    var v = ui.fr.view;
+    var h = '<button type="button" class="backbtn" data-a="fr-back">Friends</button>';
+    if (!v) return h + '<p class="sub" style="margin-top:16px">Loading profile...</p>';
+    h += '<div class="card phead">' + avatarHTML(v, true) + '<div class="pmeta"><h2 class="pname">' + esc(v.name) + tickHTML(v.verified) + '</h2><p class="handle">@' + esc(v.username) + '</p></div>' +
+      '<div class="pheadact">' + viewActions(v) + '</div></div>';
+    if (ui.fr.err) h += '<p class="err">' + esc(ui.fr.err) + '</p>';
+    return h + workoutsSect(v) + mealsSect(v) + plansSect(v) + bodySect(v);
+  }
+
   /* ---------- Profile tab ---------- */
   function nameParts(c) {
     if (c.first || c.last) return { first: c.first || '', last: c.last || '' };
@@ -2873,7 +3162,7 @@ tr.sel .liftbtn { color: var(--pr); text-decoration-color: var(--pr); }
         '<div class="benchbtns" style="margin-top:12px"><button type="button" class="primary" data-a="pf-save"' + (d.busy ? ' disabled' : '') + '>' + (d.busy ? 'Saving...' : 'Save') + '</button>' +
         (has ? '<button type="button" class="secondary" data-a="pf-cancel">Cancel</button>' : '') + '</div></div>';
     }
-    return '<div class="card"><h2 class="pname">' + esc(c.name) + '</h2>' +
+    return '<div class="card"><h2 class="pname">' + esc(c.name) + tickHTML(state.verified) + '</h2>' +
       (state.username ? '<p class="handle">@' + esc(state.username) + '</p>'
         : state.unameReady ? '<div class="prow"><span>Username</span><button type="button" class="linkbtn" data-a="pf-edit">Choose a username</button></div>' : '') +
       '<div class="prow"><span>Age</span><span>' + (c.age ? c.age : '-') + '</span></div>' +
@@ -2915,7 +3204,7 @@ tr.sel .liftbtn { color: var(--pr); text-decoration-color: var(--pr); }
   }
   function profileHTML() {
     if (ui.policy) return '<div class="card policy">' + policyPage('auth-policyback') + '</div>';
-    var h = '<h2 class="pagetitle">Profile</h2>' + profileCard() + recapHTML();
+    var h = '<h2 class="pagetitle">Profile</h2>' + profileCard() + privacyHTML() + recapHTML();
     var rec = recordsHTML();
     h += rec ? '<h2 class="pagetitle" style="margin-top:28px">Records</h2>' + rec : '<p class="sub" style="margin-top:20px">Your records will show up here after you finish a workout.</p>';
     return h + '<div class="dzone" style="margin-top:20px"><button type="button" class="linkbtn mute" data-a="auth-policy">Privacy Policy</button></div>' + footHTML();
@@ -2948,13 +3237,13 @@ tr.sel .liftbtn { color: var(--pr); text-decoration-color: var(--pr); }
     document.querySelectorAll('[data-a="unit"]').forEach(function (b) {
       b.setAttribute('aria-pressed', String(b.dataset.unit === state.unit));
     });
-    ['workout', 'plans', 'calendar', 'meals', 'profile'].forEach(function (t) {
+    ['workout', 'plans', 'calendar', 'meals', 'friends', 'profile'].forEach(function (t) {
       var b = $('tab-' + t);
       b.setAttribute('aria-selected', String(ui.tab === t));
       b.setAttribute('aria-controls', 'panel');
       b.innerHTML = t.charAt(0).toUpperCase() + t.slice(1) + (t === 'workout' && state.active ? '<span class="live" title="Workout in progress"></span>' : '');
     });
-    $('panel').innerHTML = ui.tab === 'workout' ? workoutHTML() : ui.tab === 'plans' ? plansHTML() : ui.tab === 'calendar' ? calendarHTML() : ui.tab === 'meals' ? mealsHTML() : profileHTML();
+    $('panel').innerHTML = ui.tab === 'workout' ? workoutHTML() : ui.tab === 'plans' ? plansHTML() : ui.tab === 'calendar' ? calendarHTML() : ui.tab === 'meals' ? mealsHTML() : ui.tab === 'friends' ? friendsHTML() : profileHTML();
     var selTab = $('tab-' + ui.tab);
     if (selTab && selTab.parentNode && selTab.offsetWidth) {
       var nv = selTab.parentNode;
@@ -3095,10 +3384,13 @@ tr.sel .liftbtn { color: var(--pr); text-decoration-color: var(--pr); }
       state.unit = t.dataset.unit;
       persist(); render();
     } else if (a === 'tab') {
-      ui.tab = t.dataset.tab; ui.err = null; render();
+      ui.tab = t.dataset.tab; ui.err = null;
+      if (ui.tab === 'friends') { ui.fr.view = null; ui.fr.viewLoading = false; ui.fr.viewU = null; if (state.socialReady && state.username) loadFriends(); }
+      render();
     } else if (a === 'start') startWorkout(t.dataset.plan);
     else if (a.indexOf('auth-') === 0) authAction(a, t);
     else if (a.indexOf('pf-') === 0) profileAction(a);
+    else if (a.indexOf('fr-') === 0) friendsAction(a, t);
     else if (a.indexOf('rc-') === 0) recapAction(a, t);
     else if (a.indexOf('tgt-') === 0) tgtAction(a, t);
     else if (a.indexOf('scan-') === 0) scanAction(a);
@@ -3145,6 +3437,7 @@ tr.sel .liftbtn { color: var(--pr); text-decoration-color: var(--pr); }
     var t = ev.target;
     if (t.dataset && t.dataset.au !== undefined) { auth[t.dataset.au] = t.value; return; }
     if (t.dataset && t.dataset.pf !== undefined && ui.pf) { ui.pf[t.dataset.pf] = t.value; return; }
+    if (t.id === 'frq') { ui.fr.q = t.value; searchUsers(); return; }
     if (t.id === 'del-confirm') { ui.delText = t.value; var dg = $('del-go'); if (dg) dg.disabled = t.value.trim().toUpperCase() !== 'DELETE'; return; }
     if (t.dataset.mx !== undefined) { ui.mealDraft.d[t.dataset.mx] = t.value; return; }
     if (t.dataset.dm !== undefined && state.active) { getDraft(key(state.active.exercises[+t.dataset.dm])).m = t.value; return; }
