@@ -1,170 +1,8 @@
-
-First, check the setup in the SQL Editor:
-
-select username from public.usernames u join public.verified v using (user_id);
-That should return alex. If it returns nothing, your username isn’t exactly alex; run the last part of friends.sql again with your real username.
-
-The new app code isn’t committed or pushed yet, so your live site still has the old version. Test it locally from the project folder for now:
-
-npx serve C:/Workspace/Lifts/Lifts
-You’ll need two accounts: yours (A) and a test account with a username (B). Use a private browser window for B so you can be logged into both at once.
-
-1. Setup
-
-As A, open Profile. Your name should have the blue tick and a Privacy card should appear below.
-As B, the Friends tab should show the search box, not “not switched on yet”.
-2. Requests
-
-As A, search B's first 2 letters and tap Add. It should change to Requested.
-As B, open Friends (tap the tab to refresh). A’s request should appear with Accept/Decline, and your blue tick should show next to your name.
-B taps Accept. Both of you should now see each other under Your friends.
-3. Privacy, from A’s side (have B view A’s profile after each change, re-opening it to refresh):
-
-A sets	B should see
-Workouts: Friends	A’s workouts
-Workouts: Only me	🔒 “Only Alex can see this”
-Meals: Public, then unfriend	A’s meals still visible to B
-Meals: Friends, while not friends	🔒 “Only Alex’s friends can see this”
-Body: Only me	🔒 Body section
-4. Other actions
-
-Remove friend (tap twice) on one side. Both lists should update.
-Cancel a sent request, and Decline an incoming one. Each should disappear from both accounts.
-Search your own username: you shouldn’t appear.
-Search for a name nobody has: you should see “No one found…”.
-5. Things that shouldn’t have changed
-
-Log a workout and a meal as A, and check no “couldn’t sync” error appears.
-Change a privacy setting, reload the page, and check it stuck.
-If something fails
-
-Red error mentioning “not set up”: the app can’t find the functions. Re-run friends.sql and check for an error at the bottom of the SQL Editor output.
-Anything else: paste me the red error, or the console error (F12).
-When it all passes, tell me and I’ll commit and push.
-
-okay push
-
-Pushed main
-Pushed. The friends tab, privacy settings and verified tick are on GitHub as def2485 in alexcmrn/Lifts. If your site is served from the repo, it should update within a minute or two; hard-refresh with Ctrl+Shift+R if you still see the old version.
-
-supabase/schema.sql doesn’t include the new friends tables yet. friends.sql is in the repo, so nothing is lost, but to bring the export up to date, re-run the same pg_dump command from before. Then tell me and I’ll commit the new version.
-
-okay i think it would be good to add a leaderboard in the friends section and u can filter by different things eventually exercises but for right now maybe just total workouts or total weight moved,  i think after each workout it would be good to show total weight moved
-
-Ran a command, created leaderboard.sql
-The SQL is written. Now the app: a Friends | Leaderboard switch at the top of the Friends tab, and a “Total weight moved” card on the workout summary.
-
-Created board.js, ran 2 commands, used a tool
-Ranking, ties and filters all work. Next, the workout summary: I’ll finish a Push day in the preview so it compares with the previous one.
-
-Used 2 tools
-The leaderboard and the “total weight moved” card are both built and working in the preview with fake data. To switch the leaderboard on for real, run supabase/leaderboard.sql in the Supabase SQL Editor. It needs friends.sql first, which you’ve already run. Nothing is committed yet.
-
-Leaderboard (Friends tab)
-The top of the Friends tab now has a Friends | Leaderboard switch.
-
-Rank by: Weight moved or Workouts.
-Time period: This week (from Monday), This month, or All time.
-Your row is highlighted. The top 3 get gold, silver and bronze medals, and people level on the same number share a rank.
-Each row also shows the other number: if you rank by weight, you still see how many workouts each person did.
-Tap a friend to open their profile.
-Privacy: friends who’ve set Workouts to “Only me” don’t appear.
-Weight moved is weight × reps for working and drop sets. It leaves out warmups and cardio, so warming up with the empty bar doesn’t count. That’s the same rule the workout summary already used for its volume, so the two numbers always match.
-
-Filtering by exercise later will slot into the same “Rank by” switch. On the database side it means one extra input to the same function.
-
-After each workout
-The summary now opens with a big Total weight moved card, followed by Time, Exercises and Sets. If you’ve done the same plan before, it compares with your last session: a green “+12% vs your last Push day”, or “−29% vs your last Push day” if you moved less.
-
-Workouts with no lifting, such as cardio only, don’t show the card. The old Volume tile has gone, since the card replaces it.
-
-Tested in the preview
-Ranking: volume, workouts and ties all ranked correctly. Switching to This month reloaded the numbers.
-Summary: I finished a Push day with 3 × 90 kg × 8, and it showed 2,160 kg, −29% vs your last Push day.
-Untested: none of this has run against your live database yet.
-The leaderboard is built in the Friends tab, ranking you and your friends by weight moved or workouts this week, this month or all time. Every workout summary now leads with total weight moved compared with your last session of the same plan. Both are tested in the preview with fake data. supabase/leaderboard.sql isn't run yet, and nothing is committed.
-Have you run supabase/leaderboard.sql in Supabase?
-Done, ran it
-I ran supabase/leaderboard.sql. Commit and push.
-
-Pushed main
-I’ve committed and pushed the leaderboard and the “total weight moved” summary as e48a665 on alexcmrn/Lifts. If your site is served from the repo, it should update within a minute or two.
-
-I haven’t seen it running against your live database yet. A quick check: open Friends → Leaderboard and confirm you and your test friend appear with the right numbers.
-
-supabase/schema.sql is still the export from before friends and the leaderboard. Re-run the pg_dump command from before to bring it up to date, then I’ll commit the new version.
-
-okay next when u are doing a workout and it has like 1 drop set 2 working 3 working i think its a bit confusing as it looks like u r doing 2 working sets can u remove the numbers, and next i would like at the end of a workout if u can take a photo and upload it for ur friends to see their should be like a feed in the friends tabs and u can do the same for meals
-
-Two things: dropping the set numbers, and photo posts with a feed. Starting with where the numbers appear.
-
-Searched class="n"|'Set ' \+|\(j \+ 1\) \+ ' ' \+ typeName|class="srow
-Found them. Also, while checking I spotted something: the last commit added a second function named setText, which may clash with one the workout screen already uses. Checking.
-
-Ran 2 commands
-I confirmed the issue: my friend-profile code accidentally overwrote the workout screen’s setText, causing logged sets to drop the “kg” unit and warmup/drop sets to show extra “(warmup)”/”(drop)” text next to their chip. I’ll fix both the unit display and the chip labeling now.
-
-Ran 2 commands
-Set numbers are gone and the clash is fixed. Next, the database side for photo posts: a private storage bucket, plus a posts table that only you and your friends can read.
-
-Created posts.sql
-SQL done. Before writing the app code, checking whether the in-app Privacy Policy lists what’s stored. Photos and friend sharing are new kinds of data.
-
-Read the in-app privacy policy
-The in-app Privacy Policy still claims data is only visible to your own login, which is now outdated since friends launched yesterday — I’ll update that text while I write the posts and feed code.
-
-Created posts.js, ran a command
-Code compiles. Now I’m giving the preview’s fake backend photo storage and a few sample posts so I can test sharing and the feed.
-
-Ran 2 commands, used a tool
-No numbers, and “kg” is back on logged sets. Next: finish the workout, then share a photo.
-
-Used 3 tools
-Found a variable name clash in the preview’s fake backend that was preventing my post from saving. Fixing that now and checking that photos load correctly.
-
-Ran a command, used a tool
-The feed works: my new meal post shows first with its photo, ahead of the sample posts. One thing to fix: “Delete” on my own post is being cut off at the card’s edge. Measuring why.
-
-Ran a command, used a tool
-The app’s top-bar styles target every <header> element, and the post card used one. Switching it to a plain <div>.
-
-Ran a command, used 2 tools, finished a background task (1 stopped)
-I made both changes and tested them in the preview with fake data; nothing is committed yet. I also found and fixed a bug I introduced in the friends update that’s affecting your live app now.
-
-The live bug
-A function I added for friend profiles had the same name as one the workout screen uses, and it replaced it. Since the friends push, logged sets on the live app show “80 × 5” with no “kg”. Warmup and drop sets also show an extra “(warmup)” or “(drop)” next to their chip. I renamed my function, and logged sets read “90 kg × 8” again. It stays broken on the live app until we push.
-
-Set numbers removed
-During a workout: logged sets no longer have a number in front. Sets you haven’t logged yet now say “Working set”, “Warmup set” or “Drop set” instead of “Set 2”. The type is shown by the coloured chip and edge.
-Plan editor: the set buttons say just “Warmup”, “Working” or “Drop” instead of “1 Drop”, “2 Working”.
-Photo posts and the feed
-After a workout: the summary has a Share a photo button. It opens a sheet showing what you’re sharing, for example “Push day · 2,160 kg moved · 3 sets”. You add a photo (camera or library) and an optional caption, then tap Post.
-Meals: each meal has a Share link that opens the same sheet, showing the meal name, calories and macros.
-Feed: the Friends tab now opens on Feed | Friends | Leaderboard. The feed shows your posts and your friends’ posts, newest first, 20 at a time with “Load more”. Each post shows the person (tap to open their profile), the photo, the stats and the caption. You can delete your own posts by tapping twice.
-Who sees posts: only you and your friends. Photos sit in a private storage bucket and each one is shown through a link that expires after an hour.
-Photo size and privacy: photos are shrunk to 1600px on the phone before uploading (a 3000px test image came out at 1600×1067). This also strips hidden details such as GPS location.
-Deleting your account now removes your photos first. Files aren’t deleted automatically with the database rows.
-supabase/posts.sql creates the posts table, the photo bucket and its access rules, and the feed function. Run it after the friends SQL, which you’ve already done. Until it’s run, the Share buttons stay hidden and the Feed says posts aren’t switched on yet. So it’s safe to push before running it.
-
-Privacy policy
-The in-app policy still said your data was “only readable by your own login”, which stopped being true when friends shipped. I’ve updated it to cover usernames, friends, the Privacy settings and photo posts, and changed the date to 21 October 2026. One thing to know: Workouts and Plans default to “Friends”, so anyone who accepts a friend shares those until they change the setting.
-
-Tested in the preview
-Sets: set rows and plan buttons show no numbers.
-Sharing: picking a photo, posting a workout and posting a meal all worked, and new posts appeared at the top of the feed with their photos.
-Fix: the Delete button on your own posts was being cut off at the card’s edge, because the top bar’s styles were also hitting the post header. That’s fixed.
-Not tested: real uploads to Supabase storage, which needs the SQL run first.
-Set numbers are gone, and the live bug that dropped "kg" from logged sets is fixed. Photo posts and a Feed tab are built and tested in the preview, waiting on supabase/posts.sql. Nothing is committed yet.
-
-Commit and push now to fix the live bug?
-
-
-
 --
 -- PostgreSQL database dump
 --
 
-\restrict Feawht197lSq6MJNVmYjAgvJd4tk3UQUw80sksd0SerPR6AvFPxQK2KbIXX3Oa1
+\restrict Ze2CiSaX9yJcoWDgKa8h6VCaEMcYj6cMPcGOe5nJYRoUXhj57j5w6vS2PF5Y5xf
 
 -- Dumped from database version 17.11
 -- Dumped by pg_dump version 17.11
@@ -193,6 +31,47 @@ CREATE SCHEMA public;
 --
 
 COMMENT ON SCHEMA public IS 'standard public schema';
+
+
+--
+-- Name: am_i_verified(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.am_i_verified() RETURNS boolean
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+  select exists (select 1 from public.verified v where v.user_id = auth.uid());
+$$;
+
+
+--
+-- Name: can_see_post(uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.can_see_post(pid uuid) RETURNS boolean
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+  select exists (
+    select 1 from public.posts p
+    where p.id = pid and public.lifts_relation(auth.uid(), p.user_id) in ('self', 'friends'));
+$$;
+
+
+--
+-- Name: can_see_post_image(text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.can_see_post_image(path text) RETURNS boolean
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+  select exists (
+    select 1 from public.posts p
+    where p.image_path = path
+      and public.lifts_relation(auth.uid(), p.user_id) in ('self', 'friends'));
+$$;
 
 
 --
@@ -232,6 +111,336 @@ $$;
 
 
 --
+-- Name: friend_action(text, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.friend_action(uname text, act text) RETURNS text
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+declare
+  me uuid := auth.uid();
+  other uuid;
+  rel text;
+begin
+  if me is null then raise exception 'Not signed in'; end if;
+  select user_id into other from public.usernames where username = lower(trim(both '@' from trim(uname)));
+  if other is null then raise exception 'No one has that username'; end if;
+  if other = me then raise exception 'You cannot add yourself'; end if;
+  rel := public.lifts_relation(me, other);
+  if act = 'add' then
+    if rel = 'none' then
+      insert into public.friendships (requester, addressee) values (me, other);
+    elsif rel = 'incoming' then
+      update public.friendships set status = 'accepted' where requester = other and addressee = me;
+    end if;
+  elsif act = 'remove' then
+    delete from public.friendships
+    where (requester = me and addressee = other) or (requester = other and addressee = me);
+  else
+    raise exception 'Unknown action';
+  end if;
+  return public.lifts_relation(me, other);
+end;
+$$;
+
+
+--
+-- Name: friends_feed(timestamp with time zone); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.friends_feed(before timestamp with time zone DEFAULT NULL::timestamp with time zone) RETURNS jsonb
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+  with me as (
+    select auth.uid() as id
+  ),
+  people as (
+    select m.id as uid from me m where m.id is not null
+    union
+    select case when f.requester = m.id then f.addressee else f.requester end
+    from public.friendships f cross join me m
+    where f.status = 'accepted' and m.id in (f.requester, f.addressee)
+  ),
+  page as (
+    select p.id, p.created_at
+    from public.posts p
+    join people on people.uid = p.user_id
+    where before is null or p.created_at < before
+    order by p.created_at desc
+    limit 20
+  )
+  select coalesce(jsonb_agg(x.j order by x.created_at desc), '[]'::jsonb)
+  from (select pg.created_at, public.post_json(pg.id) as j from page pg) x
+  where x.j is not null;
+$$;
+
+
+--
+-- Name: friends_leaderboard(text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.friends_leaderboard(period text) RETURNS jsonb
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+  with me as (
+    select auth.uid() as id
+  ),
+  since as (
+    select case period
+      when 'week' then date_trunc('week', current_date)::date
+      when 'month' then date_trunc('month', current_date)::date
+      else null
+    end as d
+  ),
+  people as (
+    select m.id as uid from me m where m.id is not null
+    union
+    select case when f.requester = m.id then f.addressee else f.requester end
+    from public.friendships f cross join me m
+    where f.status = 'accepted' and m.id in (f.requester, f.addressee)
+  ),
+  visible as (
+    select p.uid
+    from people p
+    cross join me m
+    left join public.sharing s on s.user_id = p.uid
+    where p.uid = m.id or public.lifts_can_see(coalesce(s.workouts, 'friends'), 'friends')
+  ),
+  stats as (
+    select v.uid,
+      (select count(*)
+         from public.workouts w cross join since
+         where w.user_id = v.uid and w.ended_at is not null
+           and (since.d is null or w.workout_date >= since.d)) as workouts,
+      (select coalesce(sum(x.weight_kg * x.reps), 0)
+         from public.sets x
+         join public.workouts w on w.id = x.workout_id
+         cross join since
+         where x.user_id = v.uid and w.ended_at is not null
+           and not x.is_cardio and x.set_type <> 'warmup'
+           and (since.d is null or w.workout_date >= since.d)) as volume_kg
+    from visible v
+  )
+  select coalesce(jsonb_agg(
+           public.lifts_card(s.uid) || jsonb_build_object(
+             'me', s.uid = (select id from me),
+             'workouts', s.workouts,
+             'volume_kg', round(s.volume_kg, 1))), '[]'::jsonb)
+  from stats s
+  where public.lifts_card(s.uid) is not null;
+$$;
+
+
+--
+-- Name: lifts_can_see(text, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.lifts_can_see(level text, rel text) RETURNS boolean
+    LANGUAGE sql IMMUTABLE
+    SET search_path TO ''
+    AS $$
+  select rel = 'self' or coalesce(level, 'private') = 'public' or (level = 'friends' and rel = 'friends');
+$$;
+
+
+--
+-- Name: lifts_card(uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.lifts_card(uid uuid) RETURNS jsonb
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+  select jsonb_build_object(
+    'username', u.username,
+    'name', coalesce(nullif(trim(p.calc ->> 'name'), ''), u.username),
+    'verified', exists (select 1 from public.verified v where v.user_id = uid),
+    'avatar', p.avatar_path)
+  from public.usernames u
+  left join public.profiles p on p.user_id = uid
+  where u.user_id = uid;
+$$;
+
+
+--
+-- Name: lifts_relation(uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.lifts_relation(viewer uuid, owner uuid) RETURNS text
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+  select case
+    when viewer is null then 'none'
+    when viewer = owner then 'self'
+    else coalesce((
+      select case when f.status = 'accepted' then 'friends'
+                  when f.requester = viewer then 'outgoing'
+                  else 'incoming' end
+      from public.friendships f
+      where (f.requester = viewer and f.addressee = owner) or (f.requester = owner and f.addressee = viewer)
+      limit 1), 'none')
+  end;
+$$;
+
+
+--
+-- Name: my_friends(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.my_friends() RETURNS jsonb
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+  select coalesce(jsonb_agg(x.card || jsonb_build_object('relation', x.rel) order by x.card ->> 'username'), '[]'::jsonb)
+  from (
+    select public.lifts_card(case when f.requester = auth.uid() then f.addressee else f.requester end) as card,
+           case when f.status = 'accepted' then 'friends'
+                when f.requester = auth.uid() then 'outgoing'
+                else 'incoming' end as rel
+    from public.friendships f
+    where auth.uid() in (f.requester, f.addressee)
+  ) x
+  where x.card is not null;
+$$;
+
+
+--
+-- Name: post_json(uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.post_json(pid uuid) RETURNS jsonb
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+  select public.lifts_card(p.user_id) || jsonb_build_object(
+    'id', p.id, 'kind', p.kind, 'caption', p.caption, 'image_path', p.image_path,
+    'details', p.details, 'created_at', p.created_at, 'mine', p.user_id = auth.uid(),
+    'reactions', public.post_reactions(p.id))
+  from public.posts p
+  where p.id = pid;
+$$;
+
+
+--
+-- Name: post_reactions(uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.post_reactions(pid uuid) RETURNS jsonb
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+  select jsonb_build_object(
+    'counts', coalesce((
+      select jsonb_object_agg(c.kind, c.n)
+      from (select r.kind, count(*) as n from public.reactions r where r.post_id = pid group by r.kind) c), '{}'::jsonb),
+    'mine', (select r.kind from public.reactions r where r.post_id = pid and r.user_id = auth.uid()));
+$$;
+
+
+--
+-- Name: profile_stats(text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.profile_stats(uname text) RETURNS jsonb
+    LANGUAGE plpgsql STABLE SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+declare
+  me uuid := auth.uid();
+  uid uuid;
+  rel text;
+  lv text;
+begin
+  if me is null then return null; end if;
+  select user_id into uid from public.usernames where username = lower(trim(both '@' from trim(uname)));
+  if uid is null then return null; end if;
+  rel := public.lifts_relation(me, uid);
+  select coalesce(s.workouts, 'friends') into lv from (select 1) one left join public.sharing s on s.user_id = uid;
+  return jsonb_build_object(
+    'friends', (select count(*) from public.friendships f where f.status = 'accepted' and uid in (f.requester, f.addressee)),
+    'posts', case when rel in ('self', 'friends') then (select count(*) from public.posts p where p.user_id = uid) end,
+    'workouts', case when public.lifts_can_see(lv, rel) then (select count(*) from public.workouts w where w.user_id = uid and w.ended_at is not null) end);
+end;
+$$;
+
+
+--
+-- Name: react_to_post(uuid, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.react_to_post(pid uuid, reaction text) RETURNS jsonb
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+begin
+  if auth.uid() is null then raise exception 'Not signed in'; end if;
+  if not public.can_see_post(pid) then raise exception 'Post not found'; end if;
+  if reaction is null or reaction = '' then
+    delete from public.reactions where post_id = pid and user_id = auth.uid();
+  else
+    insert into public.reactions (post_id, user_id, kind) values (pid, auth.uid(), reaction)
+    on conflict (post_id, user_id) do update set kind = excluded.kind, created_at = now();
+  end if;
+  return public.post_reactions(pid);
+end;
+$$;
+
+
+--
+-- Name: search_users(text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.search_users(q text) RETURNS jsonb
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+  with term as (select lower(trim(both '@' from trim(coalesce(q, '')))) as t)
+  select coalesce(jsonb_agg(public.lifts_card(u.user_id) || jsonb_build_object('relation', public.lifts_relation(auth.uid(), u.user_id))
+                            order by u.username), '[]'::jsonb)
+  from (
+    select n.user_id, n.username
+    from public.usernames n, term
+    where auth.uid() is not null
+      and length(term.t) >= 2
+      and left(n.username, length(term.t)) = term.t
+      and n.user_id <> auth.uid()
+    order by n.username
+    limit 20
+  ) u;
+$$;
+
+
+--
+-- Name: user_posts(text, timestamp with time zone); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.user_posts(uname text, before timestamp with time zone DEFAULT NULL::timestamp with time zone) RETURNS jsonb
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+  with who as (
+    select u.user_id as uid from public.usernames u
+    where u.username = lower(trim(both '@' from trim(uname)))
+      and public.lifts_relation(auth.uid(), u.user_id) in ('self', 'friends')
+  ),
+  page as (
+    select p.id, p.created_at
+    from public.posts p join who on who.uid = p.user_id
+    where before is null or p.created_at < before
+    order by p.created_at desc
+    limit 20
+  )
+  select coalesce(jsonb_agg(x.j order by x.created_at desc), '[]'::jsonb)
+  from (select pg.created_at, public.post_json(pg.id) as j from page pg) x
+  where x.j is not null;
+$$;
+
+
+--
 -- Name: username_available(text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -247,9 +456,106 @@ CREATE FUNCTION public.username_available(name text) RETURNS boolean
 $$;
 
 
+--
+-- Name: view_profile(text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.view_profile(uname text) RETURNS jsonb
+    LANGUAGE plpgsql STABLE SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+declare
+  me uuid := auth.uid();
+  uid uuid;
+  rel text;
+  lv_w text; lv_m text; lv_p text; lv_b text;
+  result jsonb;
+begin
+  if me is null then return null; end if;
+  select user_id into uid from public.usernames where username = lower(trim(both '@' from trim(uname)));
+  if uid is null then return null; end if;
+  rel := public.lifts_relation(me, uid);
+
+  select coalesce(s.workouts, 'friends'), coalesce(s.meals, 'private'), coalesce(s.plans, 'friends'), coalesce(s.body, 'private')
+    into lv_w, lv_m, lv_p, lv_b
+  from (select 1) one
+  left join public.sharing s on s.user_id = uid;
+
+  result := public.lifts_card(uid) || jsonb_build_object(
+    'relation', rel,
+    'sharing', jsonb_build_object('workouts', lv_w, 'meals', lv_m, 'plans', lv_p, 'body', lv_b));
+
+  if public.lifts_can_see(lv_b, rel) then
+    result := result || jsonb_build_object('body', (
+      select jsonb_build_object('weight_kg', p.body_kg, 'age', p.calc -> 'age', 'gender', p.calc -> 'gender')
+      from public.profiles p where p.user_id = uid));
+  end if;
+
+  if public.lifts_can_see(lv_w, rel) then
+    result := result || jsonb_build_object('workouts', (
+      select coalesce(jsonb_agg(jsonb_build_object(
+        'date', w.workout_date, 'started_at', w.started_at, 'ended_at', w.ended_at, 'plan', w.plan_name,
+        'sets', (
+          select coalesce(jsonb_agg(jsonb_build_object(
+            'exercise', x.exercise, 'kg', x.weight_kg, 'reps', x.reps, 'mins', x.minutes, 'cardio', x.is_cardio, 'type', x.set_type)
+            order by x.logged_at), '[]'::jsonb)
+          from public.sets x where x.workout_id = w.id and x.user_id = uid)
+        ) order by w.workout_date desc, w.started_at desc), '[]'::jsonb)
+      from (
+        select * from public.workouts
+        where user_id = uid and ended_at is not null
+        order by workout_date desc, started_at desc
+        limit 30
+      ) w));
+  end if;
+
+  if public.lifts_can_see(lv_m, rel) then
+    result := result || jsonb_build_object(
+      'cal_target', (select p.cal_target from public.profiles p where p.user_id = uid),
+      'meals', (
+        select coalesce(jsonb_agg(jsonb_build_object(
+          'date', m.meal_date, 'name', m.name, 'category', m.category,
+          'kcal', m.kcal, 'protein', m.protein, 'carbs', m.carbs, 'fats', m.fats)
+          order by m.meal_date desc, m.logged_at), '[]'::jsonb)
+        from public.meals m
+        where m.user_id = uid and m.meal_date >= current_date - 13));
+  end if;
+
+  if public.lifts_can_see(lv_p, rel) then
+    result := result || jsonb_build_object(
+      'plans', (
+        select coalesce(jsonb_agg(jsonb_build_object('name', pl.name, 'exercises', pl.exercises) order by pl.name), '[]'::jsonb)
+        from public.plans pl where pl.user_id = uid),
+      'schedule', (
+        select coalesce(jsonb_agg(jsonb_build_object('date', sc.on_date, 'repeat', sc.repeat_weekly, 'plan', pl.name)
+                                  order by sc.on_date), '[]'::jsonb)
+        from public.schedule sc
+        left join public.plans pl on pl.id = sc.plan_id
+        where sc.user_id = uid and (sc.on_date >= current_date - 7 or sc.repeat_weekly)));
+  end if;
+
+  return result;
+end;
+$$;
+
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
+
+--
+-- Name: friendships; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.friendships (
+    requester uuid NOT NULL,
+    addressee uuid NOT NULL,
+    status text DEFAULT 'pending'::text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT friendships_check CHECK ((requester <> addressee)),
+    CONSTRAINT friendships_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'accepted'::text])))
+);
+
 
 --
 -- Name: meals; Type: TABLE; Schema: public; Owner: -
@@ -262,3 +568,959 @@ CREATE TABLE public.meals (
     category text,
     name text NOT NULL,
     kcal numeric DEFAULT 0 NOT NULL,
+    protein numeric DEFAULT 0 NOT NULL,
+    carbs numeric DEFAULT 0 NOT NULL,
+    fats numeric DEFAULT 0 NOT NULL,
+    nutrients jsonb,
+    product_info jsonb,
+    amount_g numeric,
+    logged_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT meals_category_check CHECK ((category = ANY (ARRAY['breakfast'::text, 'lunch'::text, 'dinner'::text, 'snack'::text])))
+);
+
+
+--
+-- Name: plans; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.plans (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid DEFAULT auth.uid() NOT NULL,
+    name text NOT NULL,
+    exercises jsonb DEFAULT '[]'::jsonb NOT NULL
+);
+
+
+--
+-- Name: posts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.posts (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid DEFAULT auth.uid() NOT NULL,
+    kind text NOT NULL,
+    caption text,
+    image_path text,
+    details jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT posts_caption_check CHECK ((char_length(caption) <= 500)),
+    CONSTRAINT posts_image_in_own_folder CHECK (((image_path IS NULL) OR (split_part(image_path, '/'::text, 1) = (user_id)::text))),
+    CONSTRAINT posts_kind_check CHECK ((kind = ANY (ARRAY['workout'::text, 'meal'::text])))
+);
+
+
+--
+-- Name: profiles; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.profiles (
+    user_id uuid DEFAULT auth.uid() NOT NULL,
+    unit text DEFAULT 'kg'::text NOT NULL,
+    body_kg numeric,
+    cal_target integer,
+    targets jsonb DEFAULT '{}'::jsonb NOT NULL,
+    calc jsonb DEFAULT '{}'::jsonb NOT NULL,
+    bench jsonb DEFAULT '{}'::jsonb NOT NULL,
+    avatar_path text,
+    CONSTRAINT profiles_avatar_own_folder CHECK (((avatar_path IS NULL) OR (split_part(avatar_path, '/'::text, 1) = (user_id)::text))),
+    CONSTRAINT profiles_unit_check CHECK ((unit = ANY (ARRAY['kg'::text, 'lb'::text])))
+);
+
+
+--
+-- Name: reactions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.reactions (
+    post_id uuid NOT NULL,
+    user_id uuid DEFAULT auth.uid() NOT NULL,
+    kind text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT reactions_kind_check CHECK ((kind = ANY (ARRAY['strong'::text, 'fire'::text, 'clap'::text, 'heart'::text])))
+);
+
+
+--
+-- Name: schedule; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.schedule (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid DEFAULT auth.uid() NOT NULL,
+    plan_id uuid,
+    on_date date NOT NULL,
+    repeat_weekly boolean DEFAULT false NOT NULL
+);
+
+
+--
+-- Name: sets; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.sets (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid DEFAULT auth.uid() NOT NULL,
+    workout_id uuid NOT NULL,
+    exercise text NOT NULL,
+    weight_kg numeric DEFAULT 0 NOT NULL,
+    reps integer DEFAULT 0 NOT NULL,
+    minutes numeric,
+    is_cardio boolean DEFAULT false NOT NULL,
+    set_type text DEFAULT 'working'::text NOT NULL,
+    logged_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT sets_reps_check CHECK (((reps >= 0) AND (reps <= 100))),
+    CONSTRAINT sets_set_type_check CHECK ((set_type = ANY (ARRAY['warmup'::text, 'working'::text, 'drop'::text]))),
+    CONSTRAINT sets_weight_kg_check CHECK ((weight_kg >= (0)::numeric))
+);
+
+
+--
+-- Name: sharing; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.sharing (
+    user_id uuid NOT NULL,
+    workouts text DEFAULT 'friends'::text NOT NULL,
+    meals text DEFAULT 'private'::text NOT NULL,
+    plans text DEFAULT 'friends'::text NOT NULL,
+    body text DEFAULT 'private'::text NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT sharing_levels CHECK (((workouts = ANY (ARRAY['public'::text, 'friends'::text, 'private'::text])) AND (meals = ANY (ARRAY['public'::text, 'friends'::text, 'private'::text])) AND (plans = ANY (ARRAY['public'::text, 'friends'::text, 'private'::text])) AND (body = ANY (ARRAY['public'::text, 'friends'::text, 'private'::text]))))
+);
+
+
+--
+-- Name: usernames; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.usernames (
+    user_id uuid NOT NULL,
+    username text NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT usernames_format CHECK ((username ~ '^[a-z0-9_]{3,20}$'::text))
+);
+
+
+--
+-- Name: verified; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.verified (
+    user_id uuid NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: workouts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.workouts (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid DEFAULT auth.uid() NOT NULL,
+    plan_id uuid,
+    plan_name text,
+    workout_date date DEFAULT CURRENT_DATE NOT NULL,
+    started_at timestamp with time zone DEFAULT now() NOT NULL,
+    ended_at timestamp with time zone
+);
+
+
+--
+-- Name: friendships friendships_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.friendships
+    ADD CONSTRAINT friendships_pkey PRIMARY KEY (requester, addressee);
+
+
+--
+-- Name: meals meals_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.meals
+    ADD CONSTRAINT meals_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: plans plans_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.plans
+    ADD CONSTRAINT plans_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: posts posts_image_path_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.posts
+    ADD CONSTRAINT posts_image_path_key UNIQUE (image_path);
+
+
+--
+-- Name: posts posts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.posts
+    ADD CONSTRAINT posts_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: profiles profiles_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.profiles
+    ADD CONSTRAINT profiles_pkey PRIMARY KEY (user_id);
+
+
+--
+-- Name: reactions reactions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.reactions
+    ADD CONSTRAINT reactions_pkey PRIMARY KEY (post_id, user_id);
+
+
+--
+-- Name: schedule schedule_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.schedule
+    ADD CONSTRAINT schedule_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: sets sets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sets
+    ADD CONSTRAINT sets_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: sharing sharing_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sharing
+    ADD CONSTRAINT sharing_pkey PRIMARY KEY (user_id);
+
+
+--
+-- Name: usernames usernames_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.usernames
+    ADD CONSTRAINT usernames_pkey PRIMARY KEY (user_id);
+
+
+--
+-- Name: usernames usernames_username_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.usernames
+    ADD CONSTRAINT usernames_username_key UNIQUE (username);
+
+
+--
+-- Name: verified verified_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.verified
+    ADD CONSTRAINT verified_pkey PRIMARY KEY (user_id);
+
+
+--
+-- Name: workouts workouts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.workouts
+    ADD CONSTRAINT workouts_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: friendships_pair; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX friendships_pair ON public.friendships USING btree (LEAST(requester, addressee), GREATEST(requester, addressee));
+
+
+--
+-- Name: posts_user_created; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX posts_user_created ON public.posts USING btree (user_id, created_at DESC);
+
+
+--
+-- Name: friendships friendships_addressee_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.friendships
+    ADD CONSTRAINT friendships_addressee_fkey FOREIGN KEY (addressee) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: friendships friendships_requester_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.friendships
+    ADD CONSTRAINT friendships_requester_fkey FOREIGN KEY (requester) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: meals meals_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.meals
+    ADD CONSTRAINT meals_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: plans plans_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.plans
+    ADD CONSTRAINT plans_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: posts posts_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.posts
+    ADD CONSTRAINT posts_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: profiles profiles_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.profiles
+    ADD CONSTRAINT profiles_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: reactions reactions_post_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.reactions
+    ADD CONSTRAINT reactions_post_id_fkey FOREIGN KEY (post_id) REFERENCES public.posts(id) ON DELETE CASCADE;
+
+
+--
+-- Name: reactions reactions_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.reactions
+    ADD CONSTRAINT reactions_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: schedule schedule_plan_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.schedule
+    ADD CONSTRAINT schedule_plan_id_fkey FOREIGN KEY (plan_id) REFERENCES public.plans(id) ON DELETE CASCADE;
+
+
+--
+-- Name: schedule schedule_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.schedule
+    ADD CONSTRAINT schedule_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: sets sets_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sets
+    ADD CONSTRAINT sets_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: sets sets_workout_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sets
+    ADD CONSTRAINT sets_workout_id_fkey FOREIGN KEY (workout_id) REFERENCES public.workouts(id) ON DELETE CASCADE;
+
+
+--
+-- Name: sharing sharing_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sharing
+    ADD CONSTRAINT sharing_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: usernames usernames_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.usernames
+    ADD CONSTRAINT usernames_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: verified verified_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.verified
+    ADD CONSTRAINT verified_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: workouts workouts_plan_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.workouts
+    ADD CONSTRAINT workouts_plan_id_fkey FOREIGN KEY (plan_id) REFERENCES public.plans(id) ON DELETE SET NULL;
+
+
+--
+-- Name: workouts workouts_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.workouts
+    ADD CONSTRAINT workouts_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: posts add own posts; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "add own posts" ON public.posts FOR INSERT TO authenticated WITH CHECK ((auth.uid() = user_id));
+
+
+--
+-- Name: sharing add own sharing; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "add own sharing" ON public.sharing FOR INSERT TO authenticated WITH CHECK ((auth.uid() = user_id));
+
+
+--
+-- Name: usernames add own username; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "add own username" ON public.usernames FOR INSERT TO authenticated WITH CHECK ((auth.uid() = user_id));
+
+
+--
+-- Name: sharing change own sharing; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "change own sharing" ON public.sharing FOR UPDATE TO authenticated USING ((auth.uid() = user_id)) WITH CHECK ((auth.uid() = user_id));
+
+
+--
+-- Name: usernames change own username; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "change own username" ON public.usernames FOR UPDATE TO authenticated USING ((auth.uid() = user_id)) WITH CHECK ((auth.uid() = user_id));
+
+
+--
+-- Name: posts delete own posts; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "delete own posts" ON public.posts FOR DELETE TO authenticated USING ((auth.uid() = user_id));
+
+
+--
+-- Name: friendships; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.friendships ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: meals; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.meals ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: meals own rows; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "own rows" ON public.meals TO authenticated USING ((( SELECT auth.uid() AS uid) = user_id)) WITH CHECK ((( SELECT auth.uid() AS uid) = user_id));
+
+
+--
+-- Name: plans own rows; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "own rows" ON public.plans TO authenticated USING ((( SELECT auth.uid() AS uid) = user_id)) WITH CHECK ((( SELECT auth.uid() AS uid) = user_id));
+
+
+--
+-- Name: profiles own rows; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "own rows" ON public.profiles TO authenticated USING ((( SELECT auth.uid() AS uid) = user_id)) WITH CHECK ((( SELECT auth.uid() AS uid) = user_id));
+
+
+--
+-- Name: schedule own rows; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "own rows" ON public.schedule TO authenticated USING ((( SELECT auth.uid() AS uid) = user_id)) WITH CHECK ((( SELECT auth.uid() AS uid) = user_id));
+
+
+--
+-- Name: sets own rows; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "own rows" ON public.sets TO authenticated USING ((( SELECT auth.uid() AS uid) = user_id)) WITH CHECK ((( SELECT auth.uid() AS uid) = user_id));
+
+
+--
+-- Name: workouts own rows; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "own rows" ON public.workouts TO authenticated USING ((( SELECT auth.uid() AS uid) = user_id)) WITH CHECK ((( SELECT auth.uid() AS uid) = user_id));
+
+
+--
+-- Name: plans; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.plans ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: posts; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.posts ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: profiles; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: reactions; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.reactions ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: posts read own posts; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "read own posts" ON public.posts FOR SELECT TO authenticated USING ((auth.uid() = user_id));
+
+
+--
+-- Name: sharing read own sharing; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "read own sharing" ON public.sharing FOR SELECT TO authenticated USING ((auth.uid() = user_id));
+
+
+--
+-- Name: usernames read own username; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "read own username" ON public.usernames FOR SELECT TO authenticated USING ((auth.uid() = user_id));
+
+
+--
+-- Name: schedule; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.schedule ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: sets; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.sets ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: sharing; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.sharing ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: usernames; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.usernames ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: verified; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.verified ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: workouts; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.workouts ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: SCHEMA public; Type: ACL; Schema: -; Owner: -
+--
+
+GRANT USAGE ON SCHEMA public TO postgres;
+GRANT USAGE ON SCHEMA public TO anon;
+GRANT USAGE ON SCHEMA public TO authenticated;
+GRANT USAGE ON SCHEMA public TO service_role;
+
+
+--
+-- Name: FUNCTION am_i_verified(); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.am_i_verified() FROM PUBLIC;
+GRANT ALL ON FUNCTION public.am_i_verified() TO authenticated;
+GRANT ALL ON FUNCTION public.am_i_verified() TO service_role;
+
+
+--
+-- Name: FUNCTION can_see_post(pid uuid); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.can_see_post(pid uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.can_see_post(pid uuid) TO service_role;
+
+
+--
+-- Name: FUNCTION can_see_post_image(path text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.can_see_post_image(path text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.can_see_post_image(path text) TO authenticated;
+GRANT ALL ON FUNCTION public.can_see_post_image(path text) TO service_role;
+
+
+--
+-- Name: FUNCTION claim_username_on_signup(); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.claim_username_on_signup() TO anon;
+GRANT ALL ON FUNCTION public.claim_username_on_signup() TO authenticated;
+GRANT ALL ON FUNCTION public.claim_username_on_signup() TO service_role;
+
+
+--
+-- Name: FUNCTION delete_my_account(); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.delete_my_account() FROM PUBLIC;
+GRANT ALL ON FUNCTION public.delete_my_account() TO authenticated;
+GRANT ALL ON FUNCTION public.delete_my_account() TO service_role;
+
+
+--
+-- Name: FUNCTION friend_action(uname text, act text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.friend_action(uname text, act text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.friend_action(uname text, act text) TO authenticated;
+GRANT ALL ON FUNCTION public.friend_action(uname text, act text) TO service_role;
+
+
+--
+-- Name: FUNCTION friends_feed(before timestamp with time zone); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.friends_feed(before timestamp with time zone) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.friends_feed(before timestamp with time zone) TO authenticated;
+GRANT ALL ON FUNCTION public.friends_feed(before timestamp with time zone) TO service_role;
+
+
+--
+-- Name: FUNCTION friends_leaderboard(period text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.friends_leaderboard(period text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.friends_leaderboard(period text) TO authenticated;
+GRANT ALL ON FUNCTION public.friends_leaderboard(period text) TO service_role;
+
+
+--
+-- Name: FUNCTION lifts_can_see(level text, rel text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.lifts_can_see(level text, rel text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.lifts_can_see(level text, rel text) TO service_role;
+
+
+--
+-- Name: FUNCTION lifts_card(uid uuid); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.lifts_card(uid uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.lifts_card(uid uuid) TO service_role;
+
+
+--
+-- Name: FUNCTION lifts_relation(viewer uuid, owner uuid); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.lifts_relation(viewer uuid, owner uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.lifts_relation(viewer uuid, owner uuid) TO service_role;
+
+
+--
+-- Name: FUNCTION my_friends(); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.my_friends() FROM PUBLIC;
+GRANT ALL ON FUNCTION public.my_friends() TO authenticated;
+GRANT ALL ON FUNCTION public.my_friends() TO service_role;
+
+
+--
+-- Name: FUNCTION post_json(pid uuid); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.post_json(pid uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.post_json(pid uuid) TO service_role;
+
+
+--
+-- Name: FUNCTION post_reactions(pid uuid); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.post_reactions(pid uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.post_reactions(pid uuid) TO service_role;
+
+
+--
+-- Name: FUNCTION profile_stats(uname text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.profile_stats(uname text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.profile_stats(uname text) TO authenticated;
+GRANT ALL ON FUNCTION public.profile_stats(uname text) TO service_role;
+
+
+--
+-- Name: FUNCTION react_to_post(pid uuid, reaction text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.react_to_post(pid uuid, reaction text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.react_to_post(pid uuid, reaction text) TO authenticated;
+GRANT ALL ON FUNCTION public.react_to_post(pid uuid, reaction text) TO service_role;
+
+
+--
+-- Name: FUNCTION search_users(q text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.search_users(q text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.search_users(q text) TO authenticated;
+GRANT ALL ON FUNCTION public.search_users(q text) TO service_role;
+
+
+--
+-- Name: FUNCTION user_posts(uname text, before timestamp with time zone); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.user_posts(uname text, before timestamp with time zone) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.user_posts(uname text, before timestamp with time zone) TO authenticated;
+GRANT ALL ON FUNCTION public.user_posts(uname text, before timestamp with time zone) TO service_role;
+
+
+--
+-- Name: FUNCTION username_available(name text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.username_available(name text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.username_available(name text) TO anon;
+GRANT ALL ON FUNCTION public.username_available(name text) TO authenticated;
+GRANT ALL ON FUNCTION public.username_available(name text) TO service_role;
+
+
+--
+-- Name: FUNCTION view_profile(uname text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.view_profile(uname text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.view_profile(uname text) TO authenticated;
+GRANT ALL ON FUNCTION public.view_profile(uname text) TO service_role;
+
+
+--
+-- Name: TABLE friendships; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.friendships TO anon;
+GRANT ALL ON TABLE public.friendships TO authenticated;
+GRANT ALL ON TABLE public.friendships TO service_role;
+
+
+--
+-- Name: TABLE meals; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.meals TO anon;
+GRANT ALL ON TABLE public.meals TO authenticated;
+GRANT ALL ON TABLE public.meals TO service_role;
+
+
+--
+-- Name: TABLE plans; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.plans TO anon;
+GRANT ALL ON TABLE public.plans TO authenticated;
+GRANT ALL ON TABLE public.plans TO service_role;
+
+
+--
+-- Name: TABLE posts; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.posts TO anon;
+GRANT ALL ON TABLE public.posts TO authenticated;
+GRANT ALL ON TABLE public.posts TO service_role;
+
+
+--
+-- Name: TABLE profiles; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.profiles TO anon;
+GRANT ALL ON TABLE public.profiles TO authenticated;
+GRANT ALL ON TABLE public.profiles TO service_role;
+
+
+--
+-- Name: TABLE reactions; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.reactions TO anon;
+GRANT ALL ON TABLE public.reactions TO authenticated;
+GRANT ALL ON TABLE public.reactions TO service_role;
+
+
+--
+-- Name: TABLE schedule; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.schedule TO anon;
+GRANT ALL ON TABLE public.schedule TO authenticated;
+GRANT ALL ON TABLE public.schedule TO service_role;
+
+
+--
+-- Name: TABLE sets; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.sets TO anon;
+GRANT ALL ON TABLE public.sets TO authenticated;
+GRANT ALL ON TABLE public.sets TO service_role;
+
+
+--
+-- Name: TABLE sharing; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.sharing TO anon;
+GRANT ALL ON TABLE public.sharing TO authenticated;
+GRANT ALL ON TABLE public.sharing TO service_role;
+
+
+--
+-- Name: TABLE usernames; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.usernames TO anon;
+GRANT ALL ON TABLE public.usernames TO authenticated;
+GRANT ALL ON TABLE public.usernames TO service_role;
+
+
+--
+-- Name: TABLE verified; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.verified TO anon;
+GRANT ALL ON TABLE public.verified TO authenticated;
+GRANT ALL ON TABLE public.verified TO service_role;
+
+
+--
+-- Name: TABLE workouts; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.workouts TO anon;
+GRANT ALL ON TABLE public.workouts TO authenticated;
+GRANT ALL ON TABLE public.workouts TO service_role;
+
+
+--
+-- Name: DEFAULT PRIVILEGES FOR SEQUENCES; Type: DEFAULT ACL; Schema: public; Owner: -
+--
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON SEQUENCES TO postgres;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON SEQUENCES TO anon;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON SEQUENCES TO authenticated;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON SEQUENCES TO service_role;
+
+
+--
+-- Name: DEFAULT PRIVILEGES FOR SEQUENCES; Type: DEFAULT ACL; Schema: public; Owner: -
+--
+
+ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON SEQUENCES TO postgres;
+ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON SEQUENCES TO anon;
+ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON SEQUENCES TO authenticated;
+ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON SEQUENCES TO service_role;
+
+
+--
+-- Name: DEFAULT PRIVILEGES FOR FUNCTIONS; Type: DEFAULT ACL; Schema: public; Owner: -
+--
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON FUNCTIONS TO postgres;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON FUNCTIONS TO anon;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON FUNCTIONS TO authenticated;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON FUNCTIONS TO service_role;
+
+
+--
+-- Name: DEFAULT PRIVILEGES FOR FUNCTIONS; Type: DEFAULT ACL; Schema: public; Owner: -
+--
+
+ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON FUNCTIONS TO postgres;
+ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON FUNCTIONS TO anon;
+ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON FUNCTIONS TO authenticated;
+ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON FUNCTIONS TO service_role;
+
+
+--
+-- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: public; Owner: -
+--
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON TABLES TO postgres;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON TABLES TO anon;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON TABLES TO authenticated;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON TABLES TO service_role;
+
+
+--
+-- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: public; Owner: -
+--
+
+ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON TABLES TO postgres;
+ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON TABLES TO anon;
+ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON TABLES TO authenticated;
+ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON TABLES TO service_role;
+
+
+--
+-- PostgreSQL database dump complete
+--
+
+\unrestrict Ze2CiSaX9yJcoWDgKa8h6VCaEMcYj6cMPcGOe5nJYRoUXhj57j5w6vS2PF5Y5xf
+
