@@ -550,10 +550,6 @@ tr.sel .liftbtn { color: var(--pr); text-decoration-color: var(--pr); }
 .dot.eaten { border-radius: 2px; background: var(--mute); }
 .cell[aria-pressed="true"] .dot.done, .cell[aria-pressed="true"] .dot.eaten { background: currentColor; }
 .cell[aria-pressed="true"] .dot.planned { border-color: currentColor; }
-.kc { font: 600 .62rem/1 var(--font); color: var(--mute); white-space: nowrap; max-width: 100%; overflow: hidden; letter-spacing: -.01em; }
-.kc.over { color: var(--pr); }
-.cell[aria-pressed="true"] .kc { color: inherit; opacity: .8; }
-.cell.today[aria-pressed="true"] .kc { opacity: 1; }
 .dayd { margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; }
 .dayd h3 { font-size: 1.4rem; margin-bottom: 2px; letter-spacing: -.03em; }
 .dayd .wk { padding: 0; border-top: 1px solid var(--line); }

@@ -87,6 +87,14 @@
     var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
     return h > 0 ? h + ':' + pad(m) + ':' + pad(sec) : m + ':' + pad(sec);
   }
+  // Time of day with am or pm, e.g. "6:05 pm".
+  function fmtClock(ms) { return new Date(ms).toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true }); }
+  // How long something lasted in words, e.g. "1 hr 5 min" or "45 min".
+  function fmtLength(ms) {
+    var m = Math.round(ms / 60000), h = Math.floor(m / 60);
+    if (m < 1) return 'under 1 min';
+    return (h ? h + ' hr' : '') + (h && m % 60 ? ' ' : '') + (m % 60 ? (m % 60) + ' min' : '');
+  }
   function e1rm(kg, reps) {
     if (reps > 12) return null;
     return reps === 1 ? kg : kg * (1 + reps / 30);
@@ -1042,7 +1050,7 @@
   function slotsLabel(types) {
     var c = { warmup: 0, working: 0, drop: 0 };
     types.forEach(function (t) { c[t === 'warmup' || t === 'drop' ? t : 'working']++; });
-    if (!c.warmup && !c.drop) return c.working + (c.working === 1 ? ' set' : ' sets');
+    if (!c.warmup && !c.drop) return c.working + ' working';
     var parts = [];
     if (c.warmup) parts.push(c.warmup + ' warmup');
     if (c.working) parts.push(c.working + ' working');
@@ -1307,7 +1315,7 @@
         (wks.length ? ', ' + wks.length + (wks.length === 1 ? ' workout' : ' workouts') : '') +
         (pending ? ', ' + pending + ' planned' : '') +
         (hasMeals ? ', ' + eaten + (kt ? ' of ' + kt : '') + ' calories eaten' : '');
-      html += '<button type="button" class="cell' + (d === t0 ? ' today' : '') + '" data-a="cal-sel" data-date="' + d + '" aria-pressed="' + (d === ui.selDay) + '" aria-label="' + esc(label) + '"><span class="n">' + n + '</span><span class="dots">' + dots + '</span>' + (hasMeals ? '<span class="kc' + (kt && eaten > kt ? ' over' : '') + '">' + eaten + (kt ? '/' + kt : '') + '</span>' : '') + '</button>';
+      html += '<button type="button" class="cell' + (d === t0 ? ' today' : '') + '" data-a="cal-sel" data-date="' + d + '" aria-pressed="' + (d === ui.selDay) + '" aria-label="' + esc(label) + '"><span class="n">' + n + '</span><span class="dots">' + dots + '</span></button>';
     }
     html += '</div>';
     return html + dayDetail(ui.selDay, t0, flags);
@@ -2741,7 +2749,9 @@
       var order = [], by = {};
       (w.sets || []).forEach(function (x) { var k = key(x.exercise); if (!by[k]) { by[k] = { name: x.exercise, sets: [] }; order.push(k); } by[k].sets.push(x); });
       var dur = Date.parse(w.ended_at) - Date.parse(w.started_at);
-      h += '<div class="card fwk"><div class="fwh"><b>' + esc(w.plan || 'Workout') + '</b><span class="sub">' + fmtDate(w.date, true) + (dur > 0 ? ' \u00B7 ' + fmtDur(dur) : '') + '</span></div>' +
+      var at = Date.parse(w.started_at);
+      h += '<div class="card fwk"><div class="fwh"><b>' + esc(w.plan || 'Workout') + '</b><span class="sub">' + fmtDate(w.date, true) +
+        (isNaN(at) ? '' : ', ' + fmtClock(at)) + (dur > 0 ? ' \u00B7 ' + fmtLength(dur) : '') + '</span></div>' +
         (order.length ? order.map(function (k) {
           return '<div class="exrow"><span class="name">' + esc(by[k].name) + '</span><div class="setline">' +
             by[k].sets.map(function (x) { return '<span class="s">' + friendSetText(x) + '</span>'; }).join('') + '</div></div>';
@@ -2815,7 +2825,7 @@
   function bodyDetails(gender, age, kg) {
     var out = [];
     if (genderName(gender)) out.push(esc(genderName(gender)));
-    if (+age > 0) out.push(esc(age) + ' years');
+    if (+age > 0) out.push(esc(age));
     if (+kg > 0) out.push(fmtW(+kg) + ' ' + state.unit);
     return out;
   }
