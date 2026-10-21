@@ -5,17 +5,22 @@
 -- so the app can only fetch a photo through a short-lived link that the same rule allows.
 
 -- 1. Posts. details is a snapshot of what was shared (plan, weight moved, calories...) so the post
---    still reads correctly if the workout or meal is edited or deleted later.
+--    still reads correctly if the workout or meal is edited or deleted later. The photo is optional.
 create table if not exists public.posts (
   id         uuid primary key default gen_random_uuid(),
   user_id    uuid not null default auth.uid() references auth.users (id) on delete cascade,
   kind       text not null check (kind in ('workout', 'meal')),
   caption    text check (char_length(caption) <= 500),
-  image_path text not null unique,
+  image_path text unique,
   details    jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
-  constraint posts_image_in_own_folder check (split_part(image_path, '/', 1) = user_id::text)
+  constraint posts_image_in_own_folder check (image_path is null or split_part(image_path, '/', 1) = user_id::text)
 );
+-- Posts tables created before photos became optional: allow posts without one.
+alter table public.posts alter column image_path drop not null;
+alter table public.posts drop constraint if exists posts_image_in_own_folder;
+alter table public.posts add constraint posts_image_in_own_folder
+  check (image_path is null or split_part(image_path, '/', 1) = user_id::text);
 create index if not exists posts_user_created on public.posts (user_id, created_at desc);
 alter table public.posts enable row level security;
 

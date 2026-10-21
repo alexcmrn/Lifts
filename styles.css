@@ -331,7 +331,6 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 }
 :root[data-theme="dark"] .tick { color: #04210F; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tick { color: #04210F; } }
-.ring { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--line-hi); flex-shrink: 0; }
 .typesel { display: flex; gap: 4px; margin-top: 12px; padding: 3px; border-radius: var(--r-ctl); background: var(--field); }
 .tbtn {
   flex: 1; height: 36px; border-radius: 9px; border: 0; background: transparent; color: var(--mute);
@@ -746,7 +745,7 @@ body.noscroll { overflow: hidden; }
 .posted { margin-top: 12px; color: var(--ok); font-weight: 600; display: flex; align-items: center; gap: 8px; }
 .posted::before { content: '\2713'; display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: var(--ok); color: #04210F; font-size: .7rem; font-weight: 800; }
 .photopick {
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 180px; padding: 20px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 140px; padding: 20px;
   border: 1.5px dashed var(--line-hi); border-radius: var(--r-card); background: var(--field); cursor: pointer; text-align: center; transition: border-color .2s, background-color .2s;
 }
 .photopick:hover { border-color: var(--pr); background: var(--pr-soft); }
@@ -757,6 +756,8 @@ body.noscroll { overflow: hidden; }
 .cphoto { position: relative; border-radius: var(--r-card); overflow: hidden; background: var(--field); }
 .cphoto img { display: block; width: 100%; max-height: 46vh; object-fit: contain; }
 .swap { position: absolute; right: 10px; bottom: 10px; cursor: pointer; box-shadow: var(--shadow-lg); }
+.rmphoto { position: absolute; left: 10px; bottom: 10px; box-shadow: var(--shadow-lg); }
+.pstat { margin: 0 14px; box-shadow: none; }
 .dchips { display: flex; flex-wrap: wrap; gap: 6px; }
 .dchip { padding: 5px 10px; border-radius: 10px; background: var(--field); font-size: .82rem; font-weight: 550; font-variant-numeric: tabular-nums; }
 .dchip.strong { background: var(--ink); color: var(--bg); font-weight: 650; }

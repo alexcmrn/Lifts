@@ -824,8 +824,7 @@
     var doneN = withT.filter(function (s) { return s.done; }).length;
     var html = '<div class="wkhead"><div><div class="elapsed num" id="elapsed">' + fmtDur(Date.now() - a.start) + '</div>' +
       '<div class="sub">' + esc((a.plan ? a.plan + ' in progress' : 'Workout in progress') + (withT.length ? ' \u00B7 ' + doneN + ' of ' + withT.length + ' done' : '')) + '</div></div>' +
-      '<div class="wkright">' + unitToggleHTML() + '<button type="button" class="primary" data-a="finish">Finish workout</button></div></div>';
-    if (ui.err && ui.err.i === -1) html += '<p class="err">' + esc(ui.err.msg) + '</p>';
+      '<div class="wkright">' + unitToggleHTML() + '</div></div>';
 
     a.exercises.forEach(function (name, i) {
       var st = exStatus(a, name);
@@ -854,7 +853,7 @@
       st.pending.forEach(function (t) {
         html += '<div class="srow pending ' + t + '"><span class="load">' +
           (st.cardio ? 'Cardio' : t === 'warmup' ? 'Warmup set' : t === 'drop' ? 'Drop set' : 'Working set') +
-          '</span><span class="ring" aria-hidden="true"></span></div>';
+          '</span></div>';
       });
 
       if (st.cardio) {
@@ -878,7 +877,9 @@
       '<button type="button" class="secondary" data-a="addex" style="align-self:flex-end">Add</button></div>' +
       '<label class="chk" style="margin-top:8px"><input type="checkbox" data-a="newcardio"' + (ui.newCardio ? ' checked' : '') + '> Cardio (log minutes instead of reps)</label></div>';
 
-    html += '<div class="endrow"><button type="button" class="linkbtn danger mute' + (ui.armed === 'discard' ? ' armed' : '') + '" data-a="discard">' +
+    html += '<div class="endrow">' + (ui.err && ui.err.i === -1 ? '<p class="err" role="alert">' + esc(ui.err.msg) + '</p>' : '') +
+      '<button type="button" class="submit" data-a="finish">Finish workout</button>' +
+      '<button type="button" class="linkbtn danger mute' + (ui.armed === 'discard' ? ' armed' : '') + '" data-a="discard">' +
       (ui.armed === 'discard' ? 'Tap again to discard this workout' : 'Discard workout') + '</button></div>';
     return html;
   }
@@ -1435,7 +1436,7 @@
     var open = !!ui.openMeal[m.id];
     return '<div class="mealwrap"><div class="meal"><div class="mn"><span class="mname">' + esc(m.name) + '</span><span class="sub">' +
       fmtK(m.kcal) + ' kcal \u00B7 P ' + fmtG(m.p) + ' \u00B7 C ' + fmtG(m.c) + ' \u00B7 F ' + fmtG(m.f) + '</span></div><div class="macts">' +
-      (canPost() && !ui.posted['meal:' + m.id] ? '<button type="button" class="linkbtn" data-a="post-open" data-kind="meal" data-ref="' + esc(m.id) + '" aria-label="Share a photo of ' + esc(m.name) + '">Share</button>' : '') +
+      (canPost() && !ui.posted['meal:' + m.id] ? '<button type="button" class="linkbtn" data-a="post-open" data-kind="meal" data-ref="' + esc(m.id) + '" aria-label="Share ' + esc(m.name) + ' with friends">Share</button>' : '') +
       (has ? '<button type="button" class="linkbtn" data-a="meal-toggle" data-id="' + esc(m.id) + '" aria-expanded="' + open + '">' + (open ? 'Hide' : 'Details') + '</button>' : '') +
       '<button type="button" class="linkbtn danger mute' + (armed ? ' armed' : '') + '" data-a="meal-del" data-id="' + esc(m.id) + '">' + (armed ? 'Tap again' : 'Delete') + '</button></div></div>' +
       (open && has ? mealDetailHTML(m) : '') + '</div>';
@@ -2293,7 +2294,7 @@
   function shareButtonHTML(kind, ref) {
     if (!canPost()) return '';
     if (ui.posted[kind + ':' + ref]) return '<p class="posted">Shared with your friends</p>';
-    return '<button type="button" class="secondary share" data-a="post-open" data-kind="' + kind + '" data-ref="' + esc(ref) + '">Share a photo</button>';
+    return '<button type="button" class="secondary share" data-a="post-open" data-kind="' + kind + '" data-ref="' + esc(ref) + '">Share ' + (kind === 'meal' ? 'meal' : 'workout') + '</button>';
   }
   // A snapshot of what is being shared, so the post still reads right if the workout or meal changes later.
   function postDetails(kind, ref) {
@@ -2343,13 +2344,15 @@
   function submitPost() {
     var p = ui.post;
     if (!p || p.busy) return;
-    if (!p.blob) { p.err = 'Add a photo first.'; render(); return; }
     p.busy = true; p.err = ''; render();
-    var path = user.id + '/' + uid() + '.jpg';
-    sb.storage.from('posts').upload(path, p.blob, { contentType: 'image/jpeg', upsert: false }).then(function (r) {
-      if (r.error) throw r.error;
+    // The photo is optional: without one the post is just the stats and caption.
+    var path = p.blob ? user.id + '/' + uid() + '.jpg' : null;
+    var upload = path
+      ? sb.storage.from('posts').upload(path, p.blob, { contentType: 'image/jpeg', upsert: false }).then(function (r) { if (r.error) throw r.error; })
+      : Promise.resolve();
+    upload.then(function () {
       return sb.from('posts').insert({ kind: p.kind, caption: p.caption.trim().slice(0, 500) || null, image_path: path, details: p.details }).then(function (r2) {
-        if (r2.error) { sb.storage.from('posts').remove([path]); throw r2.error; }
+        if (r2.error) { if (path) sb.storage.from('posts').remove([path]); throw r2.error; }
       });
     }).then(function () {
       ui.posted[p.kind + ':' + p.ref] = true;
@@ -2374,8 +2377,10 @@
       '<div class="sheethead"><h3 id="post-h">Share with friends</h3><button type="button" class="linkbtn mute" data-a="post-cancel">Cancel</button></div>' +
       detailsHTML(p.kind, p.details);
     h += p.preview
-      ? '<div class="cphoto"><img src="' + p.preview + '" alt="Your photo"><label class="secondary small swap">Change photo<input type="file" id="postfile" accept="image/*"></label></div>'
-      : '<label class="photopick"><input type="file" id="postfile" accept="image/*"><span class="pi" aria-hidden="true"></span><b>' + (p.reading ? 'Reading photo...' : 'Add a photo') + '</b><small>Take one or choose from your library</small></label>';
+      ? '<div class="cphoto"><img src="' + p.preview + '" alt="Your photo">' +
+        '<button type="button" class="secondary small rmphoto" data-a="post-rmphoto">Remove</button>' +
+        '<label class="secondary small swap">Change photo<input type="file" id="postfile" accept="image/*"></label></div>'
+      : '<label class="photopick"><input type="file" id="postfile" accept="image/*"><span class="pi" aria-hidden="true"></span><b>' + (p.reading ? 'Reading photo...' : 'Add a photo') + '</b><small>Optional. Take one or choose from your library</small></label>';
     h += '<div class="field"><label for="postcap">Caption <span class="sub">(optional)</span></label><input id="postcap" maxlength="500" autocomplete="off" value="' + esc(p.caption) + '"></div>' +
       (p.err ? '<p class="err" role="alert">' + esc(p.err) + '</p>' : '') +
       '<button type="button" class="submit" data-a="post-go"' + (p.busy || p.reading ? ' disabled' : '') + '>' + (p.busy ? 'Posting...' : 'Post') + '</button>' +
@@ -2393,7 +2398,7 @@
   function feedRerender() { if (ui.tab === 'friends' && ui.fr.pane === 'feed' && !ui.fr.view && !ui.fr.viewLoading) render(); }
   // Photos are private, so each one is fetched through a link that works for an hour.
   function signUrls(posts) {
-    var fr = ui.fr, paths = posts.map(function (p) { return p.image_path; }).filter(function (x) { return !fr.urls[x]; });
+    var fr = ui.fr, paths = posts.map(function (p) { return p.image_path; }).filter(function (x) { return x && !fr.urls[x]; });
     if (!paths.length) return Promise.resolve();
     return sb.storage.from('posts').createSignedUrls(paths, 3600).then(function (r) {
       (r.data || []).forEach(function (x) { if (x.signedUrl) fr.urls[x.path] = x.signedUrl; });
@@ -2417,12 +2422,23 @@
       });
     }, function (e) { fr.feedLoading = false; fr.feedErr = friendly(e); if (!fr.feed) fr.feed = []; feedRerender(); });
   }
+  // A post without a photo leads with its headline number instead.
+  function postStatHTML(p) {
+    var d = p.details || {}, label, n, u;
+    if (p.kind === 'meal') { label = 'Calories'; n = fmtK(+d.kcal || 0); u = 'kcal'; }
+    else if (+d.volume_kg > 0) { label = 'Weight moved'; n = Math.round(toDisp(+d.volume_kg)).toLocaleString('en-GB'); u = state.unit; }
+    else if (+d.mins > 0) { label = 'Time'; n = String(d.mins); u = 'min'; }
+    else { label = 'Sets'; n = String(+d.sets || 0); u = ''; }
+    return '<div class="moved pstat"><span class="l">' + label + '</span><span class="num">' + n + (u ? '<small>' + u + '</small>' : '') + '</span></div>';
+  }
   function postCardHTML(p) {
-    var url = ui.fr.urls[p.image_path], armed = ui.armed === 'post:' + p.id;
+    var url = p.image_path && ui.fr.urls[p.image_path], armed = ui.armed === 'post:' + p.id;
     var label = p.kind === 'meal' ? 'Meal' : 'Workout';
+    var media = !p.image_path ? postStatHTML(p)
+      : '<div class="pimg">' + (url ? '<img src="' + esc(url) + '" alt="' + label + ' photo from @' + esc(p.username) + '" loading="lazy">' : '<span class="sub">Photo unavailable</span>') + '</div>';
     return '<article class="post"><div class="phd">' + whoHTML(p, p.mine, label + ' \u00B7 ' + timeAgo(p.created_at)) +
       (p.mine ? '<button type="button" class="linkbtn danger mute' + (armed ? ' armed' : '') + '" data-a="post-del" data-id="' + esc(p.id) + '">' + (armed ? 'Tap again to delete' : 'Delete') + '</button>' : '') +
-      '</div><div class="pimg">' + (url ? '<img src="' + esc(url) + '" alt="' + label + ' photo from @' + esc(p.username) + '" loading="lazy">' : '<span class="sub">Photo unavailable</span>') + '</div>' +
+      '</div>' + media +
       '<div class="pbody">' + detailsHTML(p.kind, p.details) +
       (p.caption ? '<p class="pcap"><b>@' + esc(p.username) + '</b> ' + esc(p.caption) + '</p>' : '') + '</div></article>';
   }
@@ -2432,7 +2448,7 @@
     if (fr.feed === null && !fr.feedLoading) setTimeout(function () { loadFeed(false); }, 0);
     var h = fr.feedErr ? '<p class="err">' + esc(fr.feedErr) + '</p>' : '';
     if (!fr.feed) return h + '<p class="sub">Loading feed...</p>';
-    if (!fr.feed.length) return h + '<div class="card"><h3>No posts yet</h3><p class="sub">Finish a workout or log a meal, then tap Share a photo. Posts from your friends show up here too.</p></div>';
+    if (!fr.feed.length) return h + '<div class="card"><h3>No posts yet</h3><p class="sub">Finish a workout or log a meal, then tap Share. Posts from your friends show up here too.</p></div>';
     h += '<div class="feed">' + fr.feed.map(postCardHTML).join('') + '</div>';
     if (fr.feedMore) h += '<button type="button" class="secondary more" data-a="fr-feedmore"' + (fr.feedLoading ? ' disabled' : '') + '>' + (fr.feedLoading ? 'Loading...' : 'Load more') + '</button>';
     return h;
@@ -2448,6 +2464,10 @@
     }
     if (a === 'post-cancel') { if (!ui.post || !ui.post.busy) closePost(); return; }
     if (a === 'post-go') { submitPost(); return; }
+    if (a === 'post-rmphoto') {
+      if (ui.post && !ui.post.busy) { URL.revokeObjectURL(ui.post.preview); ui.post.blob = null; ui.post.preview = ''; render(); }
+      return;
+    }
     if (a === 'post-del') {
       var id = t.dataset.id, fr = ui.fr;
       if (ui.armed !== 'post:' + id) { ui.armed = 'post:' + id; render(); return; }
@@ -2456,7 +2476,7 @@
       if (!post) return;
       sb.from('posts').delete().eq('id', id).then(function (r) {
         if (r.error) { fr.feedErr = friendly(r.error); render(); return; }
-        sb.storage.from('posts').remove([post.image_path]);
+        if (post.image_path) sb.storage.from('posts').remove([post.image_path]);
         fr.feed = fr.feed.filter(function (x) { return x.id !== id; });
         render();
       }, function (e) { fr.feedErr = friendly(e); render(); });
