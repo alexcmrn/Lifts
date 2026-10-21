@@ -19,7 +19,8 @@
       // Social features. Each *Ready flag is false until its SQL file has been run in Supabase.
       username: '', unameReady: false,
       sharing: shareDefaults(), socialReady: false, verified: false,
-      postsReady: false
+      postsReady: false,
+      avatar: '', avatarsReady: false
     };
   }
   var state = freshState();
@@ -38,16 +39,17 @@
       openMeal: {}, moreOpen: false, dayAll: false, tgtOpen: false, tgtMore: false, scan: null, scanAll: false,
       calcOpen: false, calcShown: false, calcErr: '', calcDraft: { age: '', h: '', hin: '', w: '' },
       // profile and records
-      rc: { per: 'week', off: 0 }, sel: null, histShown: 15, open: {}, shareErr: '',
+      rc: { per: 'week', off: 0 }, sel: null, histShown: 15, open: {}, shareErr: '', avBusy: false, avErr: '',
       // photo posts
       post: null, posted: {},
       // friends tab
+      pp: 'posts', plp: 'plans', viewPost: null, myStats: null,
       fr: {
         pane: 'feed',
         q: '', results: null, searching: false, searchErr: '',
         list: null, loading: false, err: '', busy: {},
         view: null, viewLoading: false, viewU: null, shown: 10,
-        feed: null, feedLoading: false, feedErr: '', feedMore: false, urls: {},
+        lists: { feed: { items: null, loading: false, err: '', more: false }, mine: { items: null, loading: false, err: '', more: false } },
         board: null, boardLoading: false, boardErr: '', metric: 'volume', period: 'week'
       }
     };
@@ -289,9 +291,10 @@
       soft(sb.from('usernames').select('username').eq('user_id', user.id).limit(1)),
       soft(sb.from('sharing').select('workouts, meals, plans, body').eq('user_id', user.id).limit(1)),
       soft(sb.rpc('am_i_verified')),
-      soft(sb.from('posts').select('id').limit(1))]).then(function (r) {
+      soft(sb.from('posts').select('id').limit(1)),
+      soft(sb.from('profiles').select('avatar_path').eq('user_id', user.id).limit(1))]).then(function (r) {
       var rows = { plans: r[0], workouts: r[1], schedule: r[2], sets: r[3], meals: r[4] };
-      var prof = (r[5].data || [])[0], un = r[6], sh = r[7], verified = r[8], posts = r[9];
+      var prof = (r[5].data || [])[0], un = r[6], sh = r[7], verified = r[8], posts = r[9], av = r[10];
       var s = freshState();
       var planName = {};
       s.plans = rows.plans.map(function (p) { planName[p.id] = p.name; return { id: p.id, name: p.name, exercises: Array.isArray(p.exercises) ? p.exercises : [] }; });
@@ -335,6 +338,8 @@
       SHARE_KEYS.forEach(function (k) { if (shRow && SHARE_LV[shRow[k[0]]]) s.sharing[k[0]] = shRow[k[0]]; });
       s.verified = !verified.error && verified.data === true;
       s.postsReady = !posts.error;
+      s.avatarsReady = !av.error;
+      s.avatar = !av.error && av.data && av.data[0] && av.data[0].avatar_path ? String(av.data[0].avatar_path) : '';
       state = s;
       snapFromState(!!prof);
       state.loaded = true;
@@ -455,6 +460,7 @@
       var lg = res.empty ? readLegacy() : null;
       ui.importOffer = lg ? lg.n : null;
       ui.tab = state.active ? 'workout' : 'plans';
+      if (state.socialReady && state.username) { loadFriends(); loadMyStats(); }
       render();
     }).catch(function () {
       auth.checking = false;
@@ -583,7 +589,7 @@
         '<b>Your account:</b> your email address and password. Your password is handled by our sign-in provider and stored in scrambled form. We never see it.',
         '<b>About you:</b> your @username, first and last name, age, gender and weight, which you give when you sign up. Later you may add your height, activity level and calorie goal to the calorie calculator.',
         '<b>What you log:</b> workouts, sets, reps, weights, cardio, plans, schedule, meals and nutrition details, targets and benchmarks.',
-        '<b>What you share:</b> your friends list, your privacy settings, and any photos and captions you post.',
+        '<b>What you share:</b> your friends list, your privacy settings, your profile photo if you add one, and any photos and captions you post.',
         '<b>On your device:</b> a sign-in token and any workout you are halfway through are kept in your browser storage so the app works between visits.']) +
       '<p>Some of this, such as your weight, what you eat and your gender, is information about your health. We only collect it because you choose to enter it, and by creating an account you agree to us using it to run the app for you.</p>' +
       '<h3>How we use it</h3>' + li([
@@ -591,7 +597,7 @@
         'To work out estimates such as calories burned, maintenance calories and nutrient targets.',
         'To show your friends the parts of your profile your Privacy settings allow, and to show posts and leaderboards to you and your friends.',
         'To sign you in and keep your account secure.']) +
-      '<p>Your name, @username and any verified tick can be seen by anyone signed in to Lifts who searches for you. Everything else follows your Privacy settings in the Profile page: each part can be public, friends only, or only you. Photos you post are only shown to you and your friends.</p>' +
+      '<p>Your name, @username, profile photo and any verified tick can be seen by anyone signed in to Lifts who searches for you. Everything else follows your Privacy settings in the Profile page: each part can be public, friends only, or only you. Photos you post are only shown to you and your friends.</p>' +
       '<p>We do not sell your data, show adverts, build advertising profiles or use analytics trackers. We do not share your data with anyone except the people your Privacy settings allow and the services below that make the app work.</p>' +
       '<h3>Who handles your data</h3>' + li([
         '<b>Supabase</b> stores your account and everything you log in its database and handles sign-in. Your data is only readable by your own login, apart from what your Privacy settings share. Photos are stored privately and reached only through short-lived links.',
@@ -1063,10 +1069,17 @@
   }
   function plansHTML() {
     if (ui.edit) return editorHTML();
-    var html = '<div class="wkhead"><h2 style="margin:0">Workout plans</h2><button type="button" class="secondary small add" data-a="plan-new">New plan</button></div>' +
+    var tabs = segHTML('pane', { plans: 'Plans', insights: 'Insights' }, ui.plp, 'Plans or insights', 'plp').replace('unit seg3', 'unit seg3 subtabs');
+    if (ui.plp === 'insights') return tabs + insightsHTML();
+    var html = tabs + '<div class="wkhead"><h2 style="margin:0">Workout plans</h2><button type="button" class="secondary small add" data-a="plan-new">New plan</button></div>' +
       (state.active ? '' : '<button type="button" class="quick" data-a="start"><span class="qi" aria-hidden="true"></span><span class="qt"><b>Quick start</b><small>Start an empty workout and add exercises as you go</small></span></button>');
     if (!state.plans.length) return html;
     return html + '<div class="plans">' + state.plans.map(function (p) { return planRow(p, true); }).join('') + '</div>';
+  }
+  // Recap, records and PR history: everything about how your training is going.
+  function insightsHTML() {
+    var rec = recordsHTML();
+    return recapHTML() + (rec ? '<h2 class="pagetitle" style="margin-top:28px">Records</h2>' + rec : '<p class="sub" style="margin-top:20px">Your records will show up here after you finish a workout.</p>');
   }
   function editorHTML() {
     var e = ui.edit;
@@ -2185,9 +2198,55 @@
   var SHARE_LV = { 'public': 'Public', friends: 'Friends', 'private': 'Only me' };
   var searchTimer = null;
   function tickHTML(v) { return v ? '<span class="vtick" role="img" aria-label="Verified" title="Verified"></span>' : ''; }
+  // Post and profile photos are private, so each is shown through a link that lasts an hour. Pages render
+  // straight away with placeholders, and the photos are swapped in place once their links arrive, so
+  // typing in a search box is never interrupted by a re-render.
+  var signed = {}, wanted = {}, signTimer = null;
+  function signedSrc(bucket, path) {
+    var k = bucket + '|' + path, hit = signed[k];
+    if (hit && Date.now() - hit.t < 50 * 60000) return hit.u;
+    if (!hit || hit.u) { wanted[k] = true; clearTimeout(signTimer); signTimer = setTimeout(signWanted, 0); }
+    return '';
+  }
+  function signWanted() {
+    var keys = Object.keys(wanted), byBucket = {};
+    wanted = {};
+    if (!keys.length || !sb) return;
+    keys.forEach(function (k) { var i = k.indexOf('|'); (byBucket[k.slice(0, i)] = byBucket[k.slice(0, i)] || []).push(k.slice(i + 1)); });
+    Object.keys(byBucket).forEach(function (bucket) {
+      var paths = byBucket[bucket];
+      var done = function (got) {
+        paths.forEach(function (p) { signed[bucket + '|' + p] = { u: got[p] || '', t: Date.now() }; });
+        document.querySelectorAll('[data-ph]').forEach(function (el) {
+          var hit = signed[el.dataset.ph];
+          if (!hit) return;
+          if (hit.u) el.innerHTML = '<img src="' + esc(hit.u) + '" alt="' + esc(el.dataset.alt || '') + '"' + (el.dataset.alt ? ' loading="lazy"' : '') + '>';
+          else if (el.dataset.alt) el.innerHTML = '<span class="sub">Photo unavailable</span>';
+          el.removeAttribute('data-ph');
+        });
+      };
+      sb.storage.from(bucket).createSignedUrls(paths, 3600).then(function (r) {
+        var got = {};
+        (r.data || []).forEach(function (x) { if (x.signedUrl) got[x.path] = x.signedUrl; });
+        done(got);
+      }, function () { done({}); });
+    });
+  }
+  // A box that shows the photo when its link is ready. inner is what shows until then.
+  function photoBox(tag, cls, bucket, path, alt, inner) {
+    var src = signedSrc(bucket, path);
+    return '<' + tag + ' class="' + cls + '"' + (src ? '' : ' data-ph="' + esc(bucket + '|' + path) + '"') + (alt ? ' data-alt="' + esc(alt) + '"' : ' aria-hidden="true"') + '>' +
+      (src ? '<img src="' + esc(src) + '" alt="' + esc(alt) + '"' + (alt ? ' loading="lazy"' : '') + '>' : inner) + '</' + tag + '>';
+  }
   function avatarHTML(c, big) {
-    var n = String(c.name || c.username || '?').trim();
-    return '<span class="avatar' + (big ? ' big' : '') + '" aria-hidden="true">' + esc(n.charAt(0).toUpperCase()) + '</span>';
+    var letter = esc(String(c.name || c.username || '?').trim().charAt(0).toUpperCase()), cls = 'avatar' + (big === 'xl' ? ' xl' : big ? ' big' : '');
+    return c.avatar ? photoBox('span', cls, 'avatars', c.avatar, '', letter) : '<span class="' + cls + '" aria-hidden="true">' + letter + '</span>';
+  }
+  // Re-draw after data arrives, unless someone is typing (a re-render would take the keyboard away).
+  function softRender() {
+    var a = document.activeElement;
+    if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.type !== 'checkbox' && a.type !== 'file') return;
+    render();
   }
   // Errors from Supabase when a table or function it was asked for has not been created yet.
   function notSetUp(e) { return /could not find the function|does not exist|schema cache/i.test((e && e.message) || ''); }
@@ -2205,8 +2264,8 @@
     sb.rpc('my_friends').then(function (r) {
       fr.loading = false;
       if (r.error) { fr.err = rpcErr(r.error); fr.list = []; } else { fr.list = r.data || []; }
-      if (ui.tab === 'friends' && !fr.view && !fr.viewLoading) render();
-    }, function (e) { fr.loading = false; fr.err = rpcErr(e); fr.list = []; if (ui.tab === 'friends') render(); });
+      softRender();
+    }, function (e) { fr.loading = false; fr.err = rpcErr(e); fr.list = []; softRender(); });
   }
   function searchTerm() { return ui.fr.q.trim().replace(/^@/, '').toLowerCase(); }
   // Results are painted into their own box so typing is never interrupted by a re-render.
@@ -2257,12 +2316,12 @@
       fr.boardLoading = false;
       fr.boardErr = !r.error ? '' : notSetUp(r.error) ? 'The leaderboard is not set up in Supabase yet. Run supabase/leaderboard.sql first.' : friendly(r.error);
       fr.board = r.error ? [] : (r.data || []);
-      if (ui.tab === 'friends' && fr.pane === 'board' && !fr.view && !fr.viewLoading) render();
-    }, function (e) { fr.boardLoading = false; fr.boardErr = friendly(e); fr.board = []; if (ui.tab === 'friends') render(); });
+      softRender();
+    }, function (e) { fr.boardLoading = false; fr.boardErr = friendly(e); fr.board = []; softRender(); });
   }
-  function segHTML(action, opts, cur, label) {
+  function segHTML(action, opts, cur, label, uiKey) {
     return '<div class="unit seg3" role="group" aria-label="' + label + '">' + Object.keys(opts).map(function (k) {
-      return '<button type="button" data-a="' + action + '" data-v="' + k + '" aria-pressed="' + (cur === k) + '">' + opts[k] + '</button>';
+      return '<button type="button" data-a="' + action + '"' + (uiKey ? ' data-k="' + uiKey + '"' : '') + ' data-v="' + k + '" aria-pressed="' + (cur === k) + '">' + opts[k] + '</button>';
     }).join('') + '</div>';
   }
   function boardValue(c, m) {
@@ -2308,15 +2367,19 @@
     if (!m) return null;
     return { name: m.name, category: m.cat || null, kcal: Math.round(m.kcal), protein: m.p, carbs: m.c, fats: m.f, date: m.date };
   }
-  function shrinkImage(file) {
+  // Redraws a photo at most max pixels across (cropped to a centred square if asked), which keeps uploads
+  // small and drops hidden photo details such as location.
+  function shrinkImage(file, max, square) {
+    max = max || 1600;
     return new Promise(function (resolve, reject) {
       var url = URL.createObjectURL(file), img = new Image();
       img.onload = function () {
-        // Redrawing at most 1600px wide keeps uploads small and drops hidden photo details such as location.
-        var k = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+        var w = img.naturalWidth, h = img.naturalHeight, sx = 0, sy = 0;
+        if (square) { var side = Math.min(w, h); sx = (w - side) / 2; sy = (h - side) / 2; w = h = side; }
+        var k = Math.min(1, max / Math.max(w, h));
         var c = document.createElement('canvas');
-        c.width = Math.max(1, Math.round(img.naturalWidth * k)); c.height = Math.max(1, Math.round(img.naturalHeight * k));
-        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        c.width = Math.max(1, Math.round(w * k)); c.height = Math.max(1, Math.round(h * k));
+        c.getContext('2d').drawImage(img, sx, sy, w, h, 0, 0, c.width, c.height);
         URL.revokeObjectURL(url);
         c.toBlob(function (b) { if (b) resolve(b); else reject(new Error('Could not read that photo.')); }, 'image/jpeg', 0.82);
       };
@@ -2356,7 +2419,8 @@
       });
     }).then(function () {
       ui.posted[p.kind + ':' + p.ref] = true;
-      ui.fr.feed = null;
+      resetPostLists();
+      ui.myStats = null;
       closePost();
     }, function (e) { p.busy = false; p.err = friendly(e); render(); });
   }
@@ -2395,32 +2459,61 @@
     if (s < 7 * 86400) return Math.floor(s / 86400) + 'd ago';
     return fmtDate(new Date(t).toISOString().slice(0, 10));
   }
-  function feedRerender() { if (ui.tab === 'friends' && ui.fr.pane === 'feed' && !ui.fr.view && !ui.fr.viewLoading) render(); }
-  // Photos are private, so each one is fetched through a link that works for an hour.
-  function signUrls(posts) {
-    var fr = ui.fr, paths = posts.map(function (p) { return p.image_path; }).filter(function (x) { return x && !fr.urls[x]; });
-    if (!paths.length) return Promise.resolve();
-    return sb.storage.from('posts').createSignedUrls(paths, 3600).then(function (r) {
-      (r.data || []).forEach(function (x) { if (x.signedUrl) fr.urls[x.path] = x.signedUrl; });
-    }, function () { /* the post still shows without its photo */ });
+  function resetPostLists() { var L = ui.fr.lists; L.feed.items = null; L.mine.items = null; }
+  // which: 'feed' (you and your friends) or 'mine' (your own posts, on your profile).
+  function loadPosts(which, more) {
+    var L = ui.fr.lists[which];
+    if (L.loading) return;
+    L.loading = true;
+    var before = more && L.items && L.items.length ? L.items[L.items.length - 1].created_at : null;
+    var q = which === 'feed' ? sb.rpc('friends_feed', { before: before }) : sb.rpc('user_posts', { uname: state.username, before: before });
+    q.then(function (r) {
+      L.loading = false;
+      if (r.error) {
+        L.err = which === 'mine' && notSetUp(r.error) ? 'Run supabase/reactions.sql in Supabase to see your posts here.' : friendly(r.error);
+        if (!L.items) L.items = [];
+      } else {
+        var got = r.data || [];
+        L.err = '';
+        L.items = more ? (L.items || []).concat(got) : got;
+        L.more = got.length === 20;
+      }
+      softRender();
+    }, function (e) { L.loading = false; L.err = friendly(e); if (!L.items) L.items = []; softRender(); });
   }
-  function loadFeed(more) {
-    var fr = ui.fr;
-    if (fr.feedLoading) return;
-    fr.feedLoading = true;
-    if (!more) fr.urls = {};
-    var before = more && fr.feed && fr.feed.length ? fr.feed[fr.feed.length - 1].created_at : null;
-    sb.rpc('friends_feed', { before: before }).then(function (r) {
-      if (r.error) { fr.feedLoading = false; fr.feedErr = friendly(r.error); if (!fr.feed) fr.feed = []; feedRerender(); return; }
-      var got = r.data || [];
-      fr.feedErr = '';
-      return signUrls(got).then(function () {
-        fr.feedLoading = false;
-        fr.feed = more ? (fr.feed || []).concat(got) : got;
-        fr.feedMore = got.length === 20;
-        feedRerender();
-      });
-    }, function (e) { fr.feedLoading = false; fr.feedErr = friendly(e); if (!fr.feed) fr.feed = []; feedRerender(); });
+  // Every copy of a post on screen: the feed, your posts and the profile you have open.
+  function postCopies(id) {
+    var lists = [ui.fr.lists.feed.items, ui.fr.lists.mine.items, ui.fr.view && ui.fr.view.posts];
+    var out = [];
+    lists.forEach(function (l) { (l || []).forEach(function (p) { if (p.id === id) out.push(p); }); });
+    return out;
+  }
+  var REACTIONS = [['strong', '\uD83D\uDCAA', 'Strong'], ['fire', '\uD83D\uDD25', 'Fire'], ['clap', '\uD83D\uDC4F', 'Clap'], ['heart', '\u2764\uFE0F', 'Love']];
+  function reactBarHTML(p) {
+    if (!p.reactions) return '';
+    var counts = p.reactions.counts || {}, mine = p.reactions.mine;
+    return '<div class="reacts" role="group" aria-label="React to this post">' + REACTIONS.map(function (r) {
+      var n = +counts[r[0]] || 0, on = mine === r[0];
+      return '<button type="button" class="react' + (on ? ' on' : '') + '" data-a="post-react" data-id="' + esc(p.id) + '" data-k="' + r[0] + '" aria-pressed="' + on + '" aria-label="' + r[2] + (n ? ', ' + n : '') + '">' +
+        '<span aria-hidden="true">' + r[1] + '</span>' + (n ? '<b>' + n + '</b>' : '') + '</button>';
+    }).join('') + '</div>';
+  }
+  // Shows the change straight away, then takes the counts the database sends back.
+  function react(id, kind) {
+    var copies = postCopies(id);
+    if (!copies.length || !copies[0].reactions) return;
+    var before = JSON.parse(JSON.stringify(copies[0].reactions));
+    var next = before.mine === kind ? null : kind;
+    var after = { counts: Object.assign({}, before.counts), mine: next };
+    if (before.mine) after.counts[before.mine] = Math.max(0, (after.counts[before.mine] || 0) - 1);
+    if (next) after.counts[next] = (after.counts[next] || 0) + 1;
+    copies.forEach(function (p) { p.reactions = after; });
+    render();
+    sb.rpc('react_to_post', { pid: id, reaction: next }).then(function (r) {
+      var got = r.error ? before : r.data;
+      postCopies(id).forEach(function (p) { p.reactions = got; });
+      softRender();
+    }, function () { postCopies(id).forEach(function (p) { p.reactions = before; }); softRender(); });
   }
   // A post without a photo leads with its headline number instead.
   function postStatHTML(p) {
@@ -2432,25 +2525,38 @@
     return '<div class="moved pstat"><span class="l">' + label + '</span><span class="num">' + n + (u ? '<small>' + u + '</small>' : '') + '</span></div>';
   }
   function postCardHTML(p) {
-    var url = p.image_path && ui.fr.urls[p.image_path], armed = ui.armed === 'post:' + p.id;
+    var armed = ui.armed === 'post:' + p.id;
     var label = p.kind === 'meal' ? 'Meal' : 'Workout';
-    var media = !p.image_path ? postStatHTML(p)
-      : '<div class="pimg">' + (url ? '<img src="' + esc(url) + '" alt="' + label + ' photo from @' + esc(p.username) + '" loading="lazy">' : '<span class="sub">Photo unavailable</span>') + '</div>';
+    var media = p.image_path ? photoBox('div', 'pimg', 'posts', p.image_path, label + ' photo from @' + p.username, '') : postStatHTML(p);
     return '<article class="post"><div class="phd">' + whoHTML(p, p.mine, label + ' \u00B7 ' + timeAgo(p.created_at)) +
       (p.mine ? '<button type="button" class="linkbtn danger mute' + (armed ? ' armed' : '') + '" data-a="post-del" data-id="' + esc(p.id) + '">' + (armed ? 'Tap again to delete' : 'Delete') + '</button>' : '') +
       '</div>' + media +
       '<div class="pbody">' + detailsHTML(p.kind, p.details) +
-      (p.caption ? '<p class="pcap"><b>@' + esc(p.username) + '</b> ' + esc(p.caption) + '</p>' : '') + '</div></article>';
+      (p.caption ? '<p class="pcap"><b>@' + esc(p.username) + '</b> ' + esc(p.caption) + '</p>' : '') + reactBarHTML(p) + '</div></article>';
   }
-  function feedHTML() {
-    var fr = ui.fr;
-    if (!state.postsReady) return '<div class="card"><h3>Photo posts are not switched on yet</h3><p class="sub">Run supabase/posts.sql in the Supabase SQL Editor, then reload the app.</p></div>';
-    if (fr.feed === null && !fr.feedLoading) setTimeout(function () { loadFeed(false); }, 0);
-    var h = fr.feedErr ? '<p class="err">' + esc(fr.feedErr) + '</p>' : '';
-    if (!fr.feed) return h + '<p class="sub">Loading feed...</p>';
-    if (!fr.feed.length) return h + '<div class="card"><h3>No posts yet</h3><p class="sub">Finish a workout or log a meal, then tap Share. Posts from your friends show up here too.</p></div>';
-    h += '<div class="feed">' + fr.feed.map(postCardHTML).join('') + '</div>';
-    if (fr.feedMore) h += '<button type="button" class="secondary more" data-a="fr-feedmore"' + (fr.feedLoading ? ' disabled' : '') + '>' + (fr.feedLoading ? 'Loading...' : 'Load more') + '</button>';
+  function postTileHTML(p) {
+    var label = (p.kind === 'meal' ? 'Meal' : 'Workout') + ', ' + timeAgo(p.created_at), d = p.details || {}, inner;
+    if (p.image_path) inner = photoBox('span', 'ptimg', 'posts', p.image_path, '', '');
+    else if (p.kind === 'meal') inner = '<span class="ptstat"><b>' + fmtK(+d.kcal || 0) + '</b><small>kcal</small></span>';
+    else inner = '<span class="ptstat"><b>' + (+d.volume_kg > 0 ? Math.round(toDisp(+d.volume_kg)).toLocaleString('en-GB') : (+d.mins || 0)) + '</b><small>' + (+d.volume_kg > 0 ? state.unit : 'min') + '</small></span>';
+    return '<button type="button" class="ptile" data-a="post-view" data-id="' + esc(p.id) + '" aria-label="Open post: ' + esc(label) + '">' + inner + '</button>';
+  }
+  function postGridHTML(list) { return '<div class="pgrid">' + list.map(postTileHTML).join('') + '</div>'; }
+  function postViewHTML() {
+    var p = postCopies(ui.viewPost)[0];
+    if (!p) return '';
+    return '<div class="scanov postov" data-a="post-close"><div class="scansheet pview" data-a="post-noop" role="dialog" aria-modal="true" aria-label="Post">' +
+      '<div class="sheethead"><span></span><button type="button" class="linkbtn mute" data-a="post-close">Close</button></div>' + postCardHTML(p) + '</div></div>';
+  }
+  function postsListHTML(which, emptyHTML, asGrid) {
+    if (!state.postsReady) return '<div class="card"><h3>Posts are not switched on yet</h3><p class="sub">Run supabase/posts.sql in the Supabase SQL Editor, then reload the app.</p></div>';
+    var L = ui.fr.lists[which];
+    if (L.items === null && !L.loading) setTimeout(function () { loadPosts(which, false); }, 0);
+    var h = L.err ? '<p class="err">' + esc(L.err) + '</p>' : '';
+    if (!L.items) return h + '<p class="sub">Loading posts...</p>';
+    if (!L.items.length) return h + emptyHTML;
+    h += asGrid ? postGridHTML(L.items) : '<div class="feed">' + L.items.map(postCardHTML).join('') + '</div>';
+    if (L.more) h += '<button type="button" class="secondary more" data-a="post-more" data-w="' + which + '"' + (L.loading ? ' disabled' : '') + '>' + (L.loading ? 'Loading...' : 'Load more') + '</button>';
     return h;
   }
   function postAction(a, t) {
@@ -2468,40 +2574,60 @@
       if (ui.post && !ui.post.busy) { URL.revokeObjectURL(ui.post.preview); ui.post.blob = null; ui.post.preview = ''; render(); }
       return;
     }
+    if (a === 'post-react') { react(t.dataset.id, t.dataset.k); return; }
+    if (a === 'post-view') { ui.viewPost = t.dataset.id; render(); return; }
+    if (a === 'post-close') { ui.viewPost = null; render(); return; }
+    if (a === 'post-more') { loadPosts(t.dataset.w, true); render(); return; }
     if (a === 'post-del') {
-      var id = t.dataset.id, fr = ui.fr;
+      var id = t.dataset.id, L = ui.fr.lists;
       if (ui.armed !== 'post:' + id) { ui.armed = 'post:' + id; render(); return; }
       ui.armed = null;
-      var post = (fr.feed || []).filter(function (x) { return x.id === id; })[0];
+      var post = postCopies(id)[0];
       if (!post) return;
       sb.from('posts').delete().eq('id', id).then(function (r) {
-        if (r.error) { fr.feedErr = friendly(r.error); render(); return; }
+        if (r.error) { L.feed.err = friendly(r.error); render(); return; }
         if (post.image_path) sb.storage.from('posts').remove([post.image_path]);
-        fr.feed = fr.feed.filter(function (x) { return x.id !== id; });
+        var drop = function (l) { return l && l.filter(function (x) { return x.id !== id; }); };
+        L.feed.items = drop(L.feed.items); L.mine.items = drop(L.mine.items);
+        if (ui.fr.view && ui.fr.view.posts) ui.fr.view.posts = drop(ui.fr.view.posts);
+        if (ui.viewPost === id) ui.viewPost = null;
+        ui.myStats = null;
         render();
-      }, function (e) { fr.feedErr = friendly(e); render(); });
+      }, function (e) { L.feed.err = friendly(e); render(); });
     }
   }
   // Photos are files rather than rows, so they have to be removed before the account itself.
   function removeMyPhotos() {
-    if (!state.postsReady) return Promise.resolve();
-    return sb.storage.from('posts').list(user.id, { limit: 1000 }).then(function (r) {
-      var names = (r.data || []).map(function (o) { return user.id + '/' + o.name; });
-      return names.length ? sb.storage.from('posts').remove(names) : null;
-    }).then(null, function () { return null; });
+    var buckets = (state.postsReady ? ['posts'] : []).concat(state.avatarsReady ? ['avatars'] : []);
+    return Promise.all(buckets.map(function (b) {
+      return sb.storage.from(b).list(user.id, { limit: 1000 }).then(function (r) {
+        var names = (r.data || []).map(function (o) { return user.id + '/' + o.name; });
+        return names.length ? sb.storage.from(b).remove(names) : null;
+      }).then(null, function () { return null; });
+    }));
   }
-  function friendsHTML() {
+  // Shown instead of social features until they are set up.
+  function socialGate() {
+    if (!state.socialReady) return '<div class="card"><h3>Friends are not switched on yet</h3><p class="sub">Run supabase/friends.sql in the Supabase SQL Editor, then reload the app.</p></div>';
+    if (!state.username) return '<div class="card"><h3>Choose a username first</h3><p class="sub" style="margin:0 0 12px">People find you by your @username.</p>' +
+      '<button type="button" class="primary" data-a="fr-needname">Choose a username</button></div>';
+    return '';
+  }
+  function feedTabHTML() {
     var fr = ui.fr;
     if (fr.view || fr.viewLoading) return friendViewHTML();
-    var h = '<h2 class="pagetitle">Friends</h2>';
-    if (!state.socialReady) return h + '<div class="card"><h3>Friends are not switched on yet</h3><p class="sub">Run supabase/friends.sql in the Supabase SQL Editor, then reload the app.</p></div>';
-    if (!state.username) return h + '<div class="card"><h3>Choose a username first</h3><p class="sub" style="margin:0 0 12px">People find you by your @username.</p>' +
-      '<button type="button" class="primary" data-a="fr-needname">Choose a username</button></div>';
-    h += segHTML('fr-pane', { feed: 'Feed', friends: 'Friends', board: 'Leaderboard' }, fr.pane, 'Friends section').replace('unit seg3', 'unit seg3 subtabs');
-    if (fr.pane === 'feed') return h + feedHTML();
+    var h = '<h2 class="pagetitle">Feed</h2>', gate = socialGate();
+    if (gate) return h + gate;
+    h += segHTML('fr-pane', { feed: 'Feed', board: 'Leaderboard' }, fr.pane, 'Feed or leaderboard').replace('unit seg3', 'unit seg3 subtabs');
     if (fr.pane === 'board') return h + boardHTML();
+    return h + postsListHTML('feed', '<div class="card"><h3>No posts yet</h3><p class="sub">Finish a workout or log a meal, then tap Share. Posts from your friends show up here too. Find friends in your Profile.</p></div>');
+  }
+  function incomingCount() { return (ui.fr.list || []).filter(function (c) { return c.relation === 'incoming'; }).length; }
+  function friendsPaneHTML() {
+    var fr = ui.fr, gate = socialGate();
+    if (gate) return gate;
     if (fr.list === null && !fr.loading) setTimeout(loadFriends, 0);
-    h += '<div class="field"><label for="frq">Find people</label><div class="ufield"><span aria-hidden="true">@</span><input id="frq" type="search" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="username" value="' + esc(fr.q) + '"></div></div>' +
+    var h = '<div class="field"><label for="frq">Find people</label><div class="ufield"><span aria-hidden="true">@</span><input id="frq" type="search" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="username" value="' + esc(fr.q) + '"></div></div>' +
       '<div id="frres" aria-live="polite">' + resultsHTML() + '</div>';
     if (fr.err) h += '<p class="err">' + esc(fr.err) + '</p>';
     var list = fr.list || [];
@@ -2518,22 +2644,24 @@
     var fr = ui.fr;
     fr.viewU = u;
     if (!quiet) { fr.view = null; fr.viewLoading = true; fr.shown = 10; render(); window.scrollTo(0, 0); }
-    sb.rpc('view_profile', { uname: u }).then(function (r) {
+    Promise.all([sb.rpc('view_profile', { uname: u }), state.postsReady ? soft(sb.rpc('user_posts', { uname: u })) : Promise.resolve({ error: true }),
+      soft(sb.rpc('profile_stats', { uname: u }))]).then(function (res) {
+      var r = res[0], posts = res[1], stats = res[2];
       if (fr.viewU !== u) return;
       fr.viewLoading = false;
       if (r.error || !r.data) { fr.view = null; fr.err = r.error ? rpcErr(r.error) : 'Could not find @' + u + '.'; }
-      else fr.view = r.data;
-      if (ui.tab === 'friends') render();
-    }, function (e) { if (fr.viewU !== u) return; fr.viewLoading = false; fr.view = null; fr.err = rpcErr(e); if (ui.tab === 'friends') render(); });
+      else { fr.view = r.data; fr.view.posts = posts.error ? null : (posts.data || []); fr.view.stats = stats.error ? null : stats.data; }
+      softRender();
+    }, function (e) { if (fr.viewU !== u) return; fr.viewLoading = false; fr.view = null; fr.err = rpcErr(e); softRender(); });
   }
   function friendsAction(a, t) {
     var fr = ui.fr, u = t.dataset.u;
-    if (a === 'fr-needname') { ui.tab = 'profile'; profileAction('pf-edit'); return; }
+    if (a === 'fr-needname') { ui.tab = 'profile'; ui.pp = 'posts'; profileAction('pf-edit'); return; }
+    if (a === 'fr-ppane') { ui.pp = t.dataset.v; if (ui.pp === 'friends') loadFriends(); if (ui.pp === 'posts' && state.postsReady) loadPosts('mine', false); render(); window.scrollTo(0, 0); return; }
     if (a === 'fr-open') { openProfile(u); return; }
     if (a === 'fr-back') { fr.view = null; fr.viewLoading = false; fr.viewU = null; render(); window.scrollTo(0, 0); return; }
     if (a === 'fr-more') { fr.shown += 10; render(); return; }
-    if (a === 'fr-pane') { fr.pane = t.dataset.v; if (fr.pane === 'board') loadBoard(); if (fr.pane === 'feed' && state.postsReady) loadFeed(false); render(); return; }
-    if (a === 'fr-feedmore') { loadFeed(true); render(); return; }
+    if (a === 'fr-pane') { fr.pane = t.dataset.v; if (fr.pane === 'board') loadBoard(); if (fr.pane === 'feed' && state.postsReady) loadPosts('feed', false); render(); return; }
     if (a === 'fr-metric') { fr.metric = t.dataset.v; render(); return; }
     if (a === 'fr-period') { if (fr.period === t.dataset.v) return; fr.period = t.dataset.v; loadBoard(); render(); return; }
     if (a === 'fr-share') {
@@ -2568,7 +2696,7 @@
   }
   function privacyHTML() {
     if (!state.socialReady) return '';
-    var h = '<div class="card"><h3>Privacy</h3><p class="sub" style="margin:-6px 0 4px">Choose who can see each part of your profile. Your name, @username and tick are always visible so people can find you.</p>';
+    var h = '<div class="card"><h3>Privacy</h3><p class="sub" style="margin:-6px 0 4px">Choose who can see each part of your profile. Your name, @username, profile photo and tick are always visible so people can find you.</p>';
     SHARE_KEYS.forEach(function (k) {
       h += '<div class="shrow"><span id="sh-' + k[0] + '">' + k[1] + '</span><div class="unit seg3" role="group" aria-labelledby="sh-' + k[0] + '">' +
         Object.keys(SHARE_LV).map(function (lv) {
@@ -2592,14 +2720,6 @@
   function lockedHTML(title, level, v) {
     return '<div class="sect"><h4>' + title + '</h4><div class="locked"><span class="lock" aria-hidden="true"></span><span>' +
       (level === 'private' ? 'Only ' + esc(v.name) + ' can see this.' : 'Only ' + esc(v.name) + '\'s friends can see this.') + '</span></div></div>';
-  }
-  function bodySect(v) {
-    if (!v.body) return lockedHTML('Body', v.sharing.body, v);
-    var b = v.body;
-    return '<div class="sect"><h4>Body</h4><div class="card">' +
-      '<div class="prow"><span>Weight</span><span>' + (+b.weight_kg > 0 ? fmtW(+b.weight_kg) + ' ' + state.unit : '-') + '</span></div>' +
-      '<div class="prow"><span>Age</span><span>' + (b.age ? esc(b.age) : '-') + '</span></div>' +
-      '<div class="prow"><span>Gender</span><span>' + (genderName(b.gender) || '-') + '</span></div></div></div>';
   }
   function friendSetText(x) {
     if (x.cardio) return fmtMins(+x.mins || 0) + ' min';
@@ -2659,17 +2779,50 @@
     }).join('') + '</div>';
     return h + '</div>';
   }
+  function postsSect(v) {
+    if (!v.posts) return '';
+    return '<div class="sect"><h4>Posts</h4>' + (v.posts.length ? postGridHTML(v.posts) : '<p class="sub">No posts yet.</p>') + '</div>';
+  }
   function friendViewHTML() {
     var v = ui.fr.view;
-    var h = '<button type="button" class="backbtn" data-a="fr-back">Friends</button>';
+    var h = '<button type="button" class="backbtn" data-a="fr-back">Back</button>';
     if (!v) return h + '<p class="sub" style="margin-top:16px">Loading profile...</p>';
-    h += '<div class="card phead">' + avatarHTML(v, true) + '<div class="pmeta"><h2 class="pname">' + esc(v.name) + tickHTML(v.verified) + '</h2><p class="handle">@' + esc(v.username) + '</p></div>' +
-      '<div class="pheadact">' + viewActions(v) + '</div></div>';
+    var st = v.stats || {};
+    h += profileHeadHTML({ name: v.name, username: v.username, verified: v.verified, avatar: v.avatar,
+      details: v.body ? bodyDetails(v.body.gender, v.body.age, v.body.weight_kg) : [],
+      counts: { posts: st.posts !== undefined ? st.posts : v.posts ? v.posts.length : null, friends: st.friends, workouts: st.workouts },
+      actions: viewActions(v) });
     if (ui.fr.err) h += '<p class="err">' + esc(ui.fr.err) + '</p>';
-    return h + workoutsSect(v) + mealsSect(v) + plansSect(v) + bodySect(v);
+    return h + postsSect(v) + workoutsSect(v) + mealsSect(v) + plansSect(v);
   }
 
   /* ---------- Profile tab ---------- */
+  // o: { name, username, verified, avatar, details: [..], counts: { posts, friends, workouts }, actions }
+  function profileHeadHTML(o) {
+    var count = function (n, label, pane) {
+      if (n === null || n === undefined) return '';
+      var inner = '<b class="num">' + Number(n).toLocaleString('en-GB') + '</b><small>' + label + '</small>';
+      return pane ? '<button type="button" class="igcount" data-a="fr-ppane" data-v="' + pane + '">' + inner + '</button>' : '<span class="igcount">' + inner + '</span>';
+    };
+    var c = o.counts || {};
+    return '<div class="card ighead"><div class="igtop">' + avatarHTML(o, 'xl') + '<div class="igcounts">' +
+      count(c.posts, c.posts === 1 ? 'post' : 'posts', o.self ? 'posts' : '') + count(c.friends, c.friends === 1 ? 'friend' : 'friends', o.self ? 'friends' : '') +
+      count(c.workouts, c.workouts === 1 ? 'workout' : 'workouts', '') + '</div></div>' +
+      '<div class="igname"><h2 class="pname">' + esc(o.name || '') + tickHTML(o.verified) + '</h2>' + (o.username ? '<p class="handle">@' + esc(o.username) + '</p>' : '') +
+      (o.details && o.details.length ? '<p class="igbio">' + o.details.join(' \u00B7 ') + '</p>' : '') + (o.extra || '') + '</div>' +
+      (o.actions ? '<div class="igacts">' + o.actions + '</div>' : '') + '</div>';
+  }
+  function bodyDetails(gender, age, kg) {
+    var out = [];
+    if (genderName(gender)) out.push(esc(genderName(gender)));
+    if (+age > 0) out.push(esc(age) + ' years');
+    if (+kg > 0) out.push(fmtW(+kg) + ' ' + state.unit);
+    return out;
+  }
+  function loadMyStats() {
+    if (!state.username) return;
+    soft(sb.rpc('profile_stats', { uname: state.username })).then(function (r) { ui.myStats = r.error ? false : r.data; softRender(); });
+  }
   function nameParts(c) {
     if (c.first || c.last) return { first: c.first || '', last: c.last || '' };
     var n = String(c.name || '').trim(), i = n.indexOf(' ');
@@ -2679,12 +2832,53 @@
     return '<div class="frow"><div class="field"><label for="' + p + 'first">First name</label><input id="' + p + 'first" data-' + p.slice(0, 2) + '="first" autocomplete="given-name" maxlength="40" value="' + esc(d.first) + '"></div>' +
       '<div class="field"><label for="' + p + 'last">Last name</label><input id="' + p + 'last" data-' + p.slice(0, 2) + '="last" autocomplete="family-name" maxlength="40" value="' + esc(d.last) + '"></div></div>';
   }
+  /* ---- profile photo (supabase/avatars.sql) ---- */
+  function setAvatar(file) {
+    if (!file || ui.avBusy) return;
+    if (!/^image\//.test(file.type || '')) { ui.avErr = 'Choose a photo.'; render(); return; }
+    ui.avBusy = true; ui.avErr = ''; render();
+    var old = state.avatar, path = user.id + '/' + uid() + '.jpg', blob = null;
+    shrinkImage(file, 512, true).then(function (b) {
+      blob = b;
+      return sb.storage.from('avatars').upload(path, b, { contentType: 'image/jpeg', upsert: false }).then(chk);
+    }).then(function () {
+      return sb.from('profiles').upsert({ user_id: user.id, avatar_path: path }, { onConflict: 'user_id' }).then(function (r) {
+        if (r.error) { sb.storage.from('avatars').remove([path]); throw r.error; }
+      });
+    }).then(function () {
+      if (old) sb.storage.from('avatars').remove([old]);
+      state.avatar = path;
+      signed['avatars|' + path] = { u: URL.createObjectURL(blob), t: Date.now() };
+      ui.avBusy = false; resetPostLists();
+      render();
+    }, function (e) { ui.avBusy = false; ui.avErr = friendly(e); render(); });
+  }
+  function removeAvatar() {
+    var old = state.avatar;
+    if (!old || ui.avBusy) return;
+    ui.avBusy = true; ui.avErr = ''; render();
+    sb.from('profiles').upsert({ user_id: user.id, avatar_path: null }, { onConflict: 'user_id' }).then(function (r) {
+      ui.avBusy = false;
+      if (r.error) { ui.avErr = friendly(r.error); render(); return; }
+      sb.storage.from('avatars').remove([old]);
+      state.avatar = ''; resetPostLists();
+      render();
+    }, function (e) { ui.avBusy = false; ui.avErr = friendly(e); render(); });
+  }
+  function avatarControlsHTML() {
+    if (!state.avatarsReady) return '';
+    if (ui.avBusy) return '<div class="avctl"><span class="sub">Saving photo...</span></div>';
+    return '<div class="avctl"><label class="linkbtn">' + (state.avatar ? 'Change photo' : 'Add profile photo') + '<input type="file" id="pfphoto" accept="image/*"></label>' +
+      (state.avatar ? '<button type="button" class="linkbtn mute" data-a="pf-rmphoto">Remove photo</button>' : '') + '</div>' +
+      (ui.avErr ? '<p class="err" role="alert">' + esc(ui.avErr) + '</p>' : '');
+  }
   function profileCard() {
     var c = state.calc || {}, has = !!c.name;
     if (!ui.pf && !has) ui.pf = { first: '', last: '', uname: state.username, age: c.age ? String(c.age) : '', gender: c.gender || '', wt: state.bodyKg > 0 ? fmtW(bodyKg()) : '', err: '' };
     if (ui.pf) {
       var d = ui.pf;
       return '<div class="card"><h3>' + (has ? 'Edit profile' : 'Set up your profile') + '</h3>' +
+        (has && state.avatarsReady ? '<div class="mehead" style="margin-bottom:12px">' + avatarHTML({ name: c.name, avatar: state.avatar }, true) + avatarControlsHTML() + '</div>' : '') +
         (state.unameReady ? unameField('pf-', d.uname) : '') + nameFields('pf-', d) +
         '<div class="frow" style="margin-top:12px"><div class="field"><label for="pf-age">Age</label><input id="pf-age" data-pf="age" inputmode="numeric" autocomplete="off" value="' + esc(d.age) + '"></div>' +
         '<div class="field"><label for="pf-gender">Gender</label><select id="pf-gender" data-pf="gender"><option value=""></option>' + genderOpts(d.gender) + '</select></div></div>' +
@@ -2693,17 +2887,18 @@
         '<div class="benchbtns" style="margin-top:12px"><button type="button" class="primary" data-a="pf-save"' + (d.busy ? ' disabled' : '') + '>' + (d.busy ? 'Saving...' : 'Save') + '</button>' +
         (has ? '<button type="button" class="secondary" data-a="pf-cancel">Cancel</button>' : '') + '</div></div>';
     }
-    return '<div class="card"><h2 class="pname">' + esc(c.name) + tickHTML(state.verified) + '</h2>' +
-      (state.username ? '<p class="handle">@' + esc(state.username) + '</p>'
-        : state.unameReady ? '<div class="prow"><span>Username</span><button type="button" class="linkbtn" data-a="pf-edit">Choose a username</button></div>' : '') +
-      '<div class="prow"><span>Age</span><span>' + (c.age ? c.age : '-') + '</span></div>' +
-      '<div class="prow"><span>Gender</span><span>' + (genderName(c.gender) || '-') + '</span></div>' +
-      '<div class="prow"><span>Weight</span><span>' + (state.bodyKg > 0 ? fmtW(state.bodyKg) + ' ' + state.unit : '-') + '</span></div>' +
-      '<div class="prow"><span>Email</span><span>' + esc((user && user.email) || '') + '</span></div>' +
-      '<div class="benchbtns" style="margin-top:12px"><button type="button" class="secondary" data-a="pf-edit">Edit profile</button></div></div>';
+    var st = ui.myStats || {}, friends = (ui.fr.list || []).filter(function (x) { return x.relation === 'friends'; }).length;
+    return profileHeadHTML({ self: true, name: c.name, username: state.username, verified: state.verified, avatar: state.avatar,
+      details: bodyDetails(c.gender, c.age, state.bodyKg),
+      counts: { posts: state.postsReady && state.username ? (st.posts !== undefined ? st.posts : ui.fr.lists.mine.items ? ui.fr.lists.mine.items.length : null) : null,
+        friends: state.socialReady && state.username ? (st.friends !== undefined ? st.friends : friends) : null, workouts: state.workouts.length },
+      extra: !state.username && state.unameReady ? '<button type="button" class="linkbtn" data-a="pf-edit">Choose a username</button>' : '',
+      actions: '<button type="button" class="secondary small" data-a="pf-edit">Edit profile</button>' +
+        '<button type="button" class="secondary small" data-a="fr-ppane" data-v="settings">Settings</button>' });
   }
   function profileAction(a) {
     var c = state.calc;
+    if (a === 'pf-rmphoto') { removeAvatar(); return; }
     if (a === 'pf-edit') ui.pf = { first: nameParts(c).first, last: nameParts(c).last, uname: state.username, age: c.age ? String(c.age) : '', gender: c.gender || '', wt: state.bodyKg > 0 ? fmtW(state.bodyKg) : '', err: '' };
     else if (a === 'pf-cancel') ui.pf = null;
     else if (a === 'pf-save') {
@@ -2733,12 +2928,25 @@
     }
     render();
   }
+  function settingsHTML() {
+    return '<button type="button" class="backbtn" data-a="fr-ppane" data-v="posts">Profile</button><h2 class="pagetitle">Settings</h2>' +
+      '<div class="card"><h3>Account</h3><div class="prow"><span>Email</span><span>' + esc((user && user.email) || '') + '</span></div>' +
+      '<div class="prow"><span>Units</span>' + unitToggleHTML() + '</div></div>' +
+      privacyHTML() +
+      '<div class="dzone" style="margin-top:20px"><button type="button" class="linkbtn mute" data-a="auth-policy">Privacy Policy</button></div>' + footHTML();
+  }
   function profileHTML() {
     if (ui.policy) return '<div class="card policy">' + policyPage('auth-policyback') + '</div>';
-    var h = '<h2 class="pagetitle">Profile</h2>' + profileCard() + privacyHTML() + recapHTML();
-    var rec = recordsHTML();
-    h += rec ? '<h2 class="pagetitle" style="margin-top:28px">Records</h2>' + rec : '<p class="sub" style="margin-top:20px">Your records will show up here after you finish a workout.</p>';
-    return h + '<div class="dzone" style="margin-top:20px"><button type="button" class="linkbtn mute" data-a="auth-policy">Privacy Policy</button></div>' + footHTML();
+    if (ui.fr.view || ui.fr.viewLoading) return friendViewHTML();
+    if (ui.pp === 'settings') return settingsHTML();
+    var head = profileCard();
+    if (ui.pf) return '<h2 class="pagetitle">Profile</h2>' + head;
+    var h = '<h2 class="pagetitle">Profile</h2>' + head;
+    if (!state.socialReady) return h + '<p class="sub" style="margin-top:16px">Find your recap, records and PR history in Plans \u2192 Insights.</p>';
+    var n = incomingCount(), pane = ui.pp === 'friends' ? 'friends' : 'posts';
+    h += segHTML('fr-ppane', { posts: 'Posts', friends: 'Friends' + (n ? ' (' + n + ')' : '') }, pane, 'Profile section').replace('unit seg3', 'unit seg3 subtabs');
+    if (pane === 'friends') return h + friendsPaneHTML();
+    return h + (socialGate() || postsListHTML('mine', '<div class="card"><h3>No posts yet</h3><p class="sub">Finish a workout or log a meal, then tap Share.</p></div>', true));
   }
 
   /* ---------- render ---------- */
@@ -2756,15 +2964,16 @@
     document.querySelectorAll('[data-a="unit"]').forEach(function (b) {
       b.setAttribute('aria-pressed', String(b.dataset.unit === state.unit));
     });
-    ['workout', 'plans', 'calendar', 'meals', 'friends', 'profile'].forEach(function (t) {
+    ['workout', 'plans', 'calendar', 'meals', 'feed', 'profile'].forEach(function (t) {
       var b = $('tab-' + t);
       b.setAttribute('aria-selected', String(ui.tab === t));
       b.setAttribute('aria-controls', 'panel');
-      b.innerHTML = t.charAt(0).toUpperCase() + t.slice(1) + (t === 'workout' && state.active ? '<span class="live" title="Workout in progress"></span>' : '');
+      b.innerHTML = t.charAt(0).toUpperCase() + t.slice(1) + (t === 'workout' && state.active ? '<span class="live" title="Workout in progress"></span>' : '') +
+        (t === 'profile' && incomingCount() ? '<span class="live dot" title="Friend requests"></span>' : '');
     });
     var sh = $('sheet');
-    if (sh) { sh.innerHTML = ui.post ? postSheetHTML() : ''; document.body.classList.toggle('noscroll', !!ui.post); }
-    $('panel').innerHTML = ui.tab === 'workout' ? workoutHTML() : ui.tab === 'plans' ? plansHTML() : ui.tab === 'calendar' ? calendarHTML() : ui.tab === 'meals' ? mealsHTML() : ui.tab === 'friends' ? friendsHTML() : profileHTML();
+    if (sh) { sh.innerHTML = ui.post ? postSheetHTML() : ui.viewPost ? postViewHTML() : ''; document.body.classList.toggle('noscroll', !!(ui.post || ui.viewPost)); }
+    $('panel').innerHTML = ui.tab === 'workout' ? workoutHTML() : ui.tab === 'plans' ? plansHTML() : ui.tab === 'calendar' ? calendarHTML() : ui.tab === 'meals' ? mealsHTML() : ui.tab === 'feed' ? feedTabHTML() : profileHTML();
     var selTab = $('tab-' + ui.tab);
     if (selTab && selTab.parentNode && selTab.offsetWidth) {
       var nv = selTab.parentNode;
@@ -2906,10 +3115,18 @@
       persist(); render();
     } else if (a === 'tab') {
       ui.tab = t.dataset.tab; ui.err = null;
-      if (ui.tab === 'friends') { ui.fr.view = null; ui.fr.viewLoading = false; ui.fr.viewU = null; if (state.socialReady && state.username) { loadFriends(); if (ui.fr.pane === 'board') loadBoard(); if (ui.fr.pane === 'feed' && state.postsReady) loadFeed(false); } }
+      ui.fr.view = null; ui.fr.viewLoading = false; ui.fr.viewU = null;
+      if (state.socialReady && state.username && (ui.tab === 'feed' || ui.tab === 'profile')) {
+        loadFriends();
+        if (ui.tab === 'feed' && ui.fr.pane === 'board') loadBoard();
+        if (state.postsReady && ui.tab === 'feed' && ui.fr.pane === 'feed') loadPosts('feed', false);
+        if (state.postsReady && ui.tab === 'profile' && ui.pp === 'posts') loadPosts('mine', false);
+        if (ui.tab === 'profile') { ui.pp = ui.pp === 'settings' ? 'posts' : ui.pp; loadMyStats(); }
+      }
       render();
     } else if (a === 'start') startWorkout(t.dataset.plan);
     else if (a.indexOf('auth-') === 0) authAction(a, t);
+    else if (a === 'pane') { ui[t.dataset.k] = t.dataset.v; render(); window.scrollTo(0, 0); }
     else if (a.indexOf('pf-') === 0) profileAction(a);
     else if (a.indexOf('fr-') === 0) friendsAction(a, t);
     else if (a.indexOf('post-') === 0) postAction(a, t);
@@ -2993,6 +3210,7 @@
     var t = ev.target;
     if (t.id === 'au-agree') { auth.agree = t.checked; return; }
     if (t.id === 'postfile') { pickPhoto(t.files && t.files[0]); return; }
+    if (t.id === 'pfphoto') { setAvatar(t.files && t.files[0]); return; }
     if (t.id === 'bw' || t.id === 'tbw') {
       var bn = Number(String(t.value).trim().replace(',', '.'));
       state.bodyKg = isFinite(bn) && bn > 20 ? toKg(bn) : 0;

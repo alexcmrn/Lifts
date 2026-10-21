@@ -76,6 +76,7 @@ returns boolean language sql immutable set search_path = '' as $$
 $$;
 
 -- What anyone signed in can see about an account: @username, display name and the verified tick.
+-- avatars.sql replaces this with a version that also includes the profile photo, so run avatars.sql again after re-running this file.
 create or replace function public.lifts_card(uid uuid)
 returns jsonb language sql stable security definer set search_path = '' as $$
   select jsonb_build_object(

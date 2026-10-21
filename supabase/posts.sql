@@ -69,6 +69,7 @@ create policy "posts: see own and friends' photos" on storage.objects
   using (bucket_id = 'posts' and ((storage.foldername(name))[1] = auth.uid()::text or public.can_see_post_image(name)));
 
 -- 3. The feed: your posts and your friends' posts, newest first, 20 at a time.
+--    reactions.sql replaces this with a version that includes reactions, so run reactions.sql again after re-running this file.
 --    Pass the created_at of the last post you have to get the next page.
 create or replace function public.friends_feed(before timestamptz default null)
 returns jsonb language sql stable security definer set search_path = '' as $$
