@@ -6,7 +6,7 @@ const { loadServiceWorker } = require('./load');
 test('installing stores the app so it can open offline', async () => {
   const sw = loadServiceWorker();
   await sw.install();
-  const cached = await (await sw.caches.open('lifts-v1')).keys();
+  const cached = await (await sw.caches.open('lifts-v2')).keys();
   for (const f of ['index.html', 'styles.css', 'app.js', 'manifest.webmanifest']) {
     assert.ok(cached.some((u) => u.endsWith('/' + f)), f + ' is stored');
   }
@@ -17,6 +17,13 @@ test('online: app files come fresh from the network', async () => {
   await sw.install();
   const res = await sw.request('https://lifts.test/app.js');
   assert.equal(res.body, 'network:https://lifts.test/app.js', 'so updates show straight away');
+  assert.equal(sw.net.modes['https://lifts.test/app.js'], 'no-cache', 'and it checks with the server instead of reusing a browser copy');
+});
+
+test('the offline copy is stored fresh, not from the browser cache', async () => {
+  const sw = loadServiceWorker();
+  await sw.install();
+  assert.equal(sw.net.modes['https://lifts.test/app.js'], 'reload');
 });
 
 test('offline: app files come from the stored copy', async () => {

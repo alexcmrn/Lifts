@@ -3411,7 +3411,7 @@
   function render() {
     var signedIn = !!(user && state.loaded) && !auth.recovery;
     $('app').hidden = !signedIn;
-    $('acct').hidden = !signedIn;
+    $('acct').hidden = !signedIn || ui.tab !== 'profile'; // Log out lives on the Profile tab only
     $('auth').hidden = signedIn;
     if (!signedIn) { renderAuth(); return; }
     var nt = $('notice');

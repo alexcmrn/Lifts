@@ -41,13 +41,13 @@ function loadApp() {
 function loadServiceWorker() {
   const handlers = {};
   const stores = new Map();
-  const net = { online: true, requests: [] };
+  const net = { online: true, requests: [], modes: {} };
   function cacheFor(name) {
     if (!stores.has(name)) stores.set(name, new Map());
     const m = stores.get(name);
     const k = (req) => (typeof req === 'string' ? new URL(req, 'https://lifts.test/').href : req.url).split('?')[0];
     return {
-      addAll: async (urls) => { for (const u of urls) m.set(k(u), { body: 'cached:' + k(u), ok: true }); },
+      addAll: async (reqs) => { for (const r of reqs) { net.modes[k(r)] = r.cache; m.set(k(r), { body: 'cached:' + k(r), ok: true }); } },
       put: async (req, res) => { m.set(k(req), res); },
       match: async (req) => m.get(k(req)),
       keys: async () => [...m.keys()]
@@ -59,8 +59,9 @@ function loadServiceWorker() {
     delete: async (n) => stores.delete(n),
     match: async (req) => { for (const n of stores.keys()) { const r = await cacheFor(n).match(req); if (r) return r; } return undefined; }
   };
-  const fetch = async (req) => {
+  const fetch = async (req, init) => {
     net.requests.push(req.url);
+    net.modes[req.url] = init && init.cache;
     if (!net.online) throw new TypeError('Failed to fetch');
     return { ok: true, type: 'basic', body: 'network:' + req.url, clone() { return this; } };
   };
@@ -70,7 +71,8 @@ function loadServiceWorker() {
     skipWaiting: async () => {},
     clients: { claim: async () => {} }
   };
-  const context = { self, caches, fetch, URL, Response: { error: () => ({ error: true }) }, Promise, console };
+  function Request(u, init) { this.url = new URL(u, 'https://lifts.test/').href; this.cache = init && init.cache; }
+  const context = { self, caches, fetch, URL, Request, Response: { error: () => ({ error: true }) }, Promise, console };
   vm.createContext(context);
   vm.runInContext(fs.readFileSync(path.join(root, 'sw.js'), 'utf8'), context, { filename: 'sw.js' });
 
