@@ -18,7 +18,7 @@
       loaded: false,
       // Social features. Each *Ready flag is false until its SQL file has been run in Supabase.
       username: '', unameReady: false,
-      sharing: shareDefaults(), socialReady: false, verified: false,
+      sharing: shareDefaults(), socialReady: false, verified: false, sharingChosen: false,
       postsReady: false,
       avatar: '', avatarsReady: false
     };
@@ -39,18 +39,20 @@
       openMeal: {}, moreOpen: false, dayAll: false, tgtOpen: false, tgtMore: false, scan: null, scanAll: false,
       calcOpen: false, calcShown: false, calcErr: '', calcDraft: { age: '', h: '', hin: '', w: '' },
       // profile and records
-      rc: { per: 'week', off: 0 }, sel: null, histShown: 15, open: {}, shareErr: '', avBusy: false, avErr: '',
+      rc: { per: 'week', off: 0 }, sel: null, histShown: 15, open: {}, shareErr: '', avBusy: false, avErr: '', exNew: '', exMsg: '', offline: false,
       // photo posts
       post: null, posted: {},
       // friends tab
       pp: 'posts', plp: 'plans', viewPost: null, myStats: null,
+      vp: null, report: null, blocks: null, blockMsg: '', privAsk: true, extraPosts: [],
+      act: { items: null, loading: false, err: '' },
       fr: {
         pane: 'feed',
         q: '', results: null, searching: false, searchErr: '',
         list: null, loading: false, err: '', busy: {},
         view: null, viewLoading: false, viewU: null, shown: 10,
         lists: { feed: { items: null, loading: false, err: '', more: false }, mine: { items: null, loading: false, err: '', more: false } },
-        board: null, boardLoading: false, boardErr: '', metric: 'volume', period: 'week'
+        board: null, boardLoading: false, boardErr: '', metric: 'volume', period: 'week', lbEx: ''
       }
     };
   }
@@ -204,7 +206,9 @@
     var m = $('syncmsg');
     if (m) {
       m.hidden = !f;
-      m.textContent = f ? 'Could not save your latest changes. Trying again shortly.' : '';
+      m.textContent = !f ? '' : navigator.onLine === false
+        ? 'You are offline. Your changes are saved on this phone and will sync when you are back online.'
+        : 'Could not save your latest changes. Trying again shortly.';
     }
     if (f && !retryTimer) {
       retryTimer = setTimeout(function () { retryTimer = null; writeQueue = writeQueue.then(syncNow); }, 8000);
@@ -231,10 +235,11 @@
     if (ps !== snap.profile) {
       p = p.then(function () { return sb.from('profiles').upsert(pr, { onConflict: 'user_id' }); }).then(chk).then(function () { snap.profile = ps; });
     }
-    return p.then(function () { setSyncFail(false); }).catch(function () { setSyncFail(true); });
+    return p.then(function () { lastSyncOk = true; setSyncFail(false); saveCache(); }).catch(function () { lastSyncOk = false; setSyncFail(true); });
   }
   function persist() {
     saveLocal();
+    saveCache();
     if (!sb || !user || !state.loaded) return;
     writeQueue = writeQueue.then(syncNow);
   }
@@ -344,6 +349,7 @@
       var shRow = !sh.error && sh.data && sh.data[0];
       s.socialReady = !sh.error;
       SHARE_KEYS.forEach(function (k) { if (shRow && SHARE_LV[shRow[k[0]]]) s.sharing[k[0]] = shRow[k[0]]; });
+      s.sharingChosen = !!shRow;
       s.verified = !verified.error && verified.data === true;
       s.postsReady = !posts.error;
       s.avatarsReady = !av.error;
@@ -436,6 +442,7 @@
         ' from before accounts. Add them to your account?</p><div class="benchbtns"><button type="button" class="primary" data-a="auth-import">Import</button>' +
         '<button type="button" class="secondary" data-a="auth-skipimport">Skip</button></div></div>';
     }
+    if (ui.offline) return '<p class="sub offline">Offline. Showing the data saved on this phone. Changes will sync when you are back online.</p>';
     return ui.importMsg ? '<p class="sub">' + esc(ui.importMsg) + '</p>' : '';
   }
 
@@ -451,6 +458,7 @@
     return m || 'Something went wrong. Try again.';
   }
   function resetAll() {
+    if (user) cachePut('user:' + user.id); // logging out removes the offline copy from this device
     user = null;
     state = freshState();
     ui = freshUi();
@@ -468,14 +476,80 @@
       var lg = res.empty ? readLegacy() : null;
       ui.importOffer = lg ? lg.n : null;
       ui.tab = state.active ? 'workout' : 'plans';
-      if (state.socialReady && state.username) { loadFriends(); loadMyStats(); }
+      if (state.socialReady && state.username) { loadFriends(); loadMyStats(); loadActivity(); }
+      saveCache();
       render();
     }).catch(function () {
-      auth.checking = false;
-      auth.loadErr = 'Could not load your data. Check your connection and try again.';
-      render();
+      // No connection: carry on from the copy saved on this device, if there is one.
+      cacheGet('user:' + u.id).then(function (c) {
+        if (user !== u) return;
+        auth.checking = false;
+        if (!c) { auth.loadErr = 'Could not load your data. Check your connection and try again.'; render(); return; }
+        useCache(c);
+        ui.offline = true;
+        ui.tab = state.active ? 'workout' : 'plans';
+        render();
+      });
     });
   }
+
+  /* ---- offline copy of your data (IndexedDB, on this device only) ---- */
+  var idb = null, cacheTimer = null, lastSyncOk = true;
+  function cacheDb() {
+    if (!idb) idb = new Promise(function (res, rej) {
+      if (!window.indexedDB) { rej(new Error('No storage')); return; }
+      var r = indexedDB.open('lifts', 1);
+      r.onupgradeneeded = function () { r.result.createObjectStore('cache'); };
+      r.onsuccess = function () { res(r.result); };
+      r.onerror = function () { rej(r.error); };
+    });
+    return idb;
+  }
+  // Pass undefined to delete.
+  function cachePut(k, v) {
+    return cacheDb().then(function (db) {
+      return new Promise(function (res) {
+        var t = db.transaction('cache', 'readwrite');
+        if (v === undefined) t.objectStore('cache').delete(k); else t.objectStore('cache').put(v, k);
+        t.oncomplete = res; t.onerror = res;
+      });
+    }).catch(function () { /* storage can be blocked; the app still works online */ });
+  }
+  function cacheGet(k) {
+    return cacheDb().then(function (db) {
+      return new Promise(function (res) {
+        var r = db.transaction('cache').objectStore('cache').get(k);
+        r.onsuccess = function () { res(r.result || null); };
+        r.onerror = function () { res(null); };
+      });
+    }).catch(function () { return null; });
+  }
+  // Saves what is on screen plus what the server last confirmed, so offline changes can be sent later.
+  function saveCache() {
+    if (!user || !state.loaded) return;
+    var id = user.id;
+    clearTimeout(cacheTimer);
+    cacheTimer = setTimeout(function () {
+      var s = Object.assign({}, state);
+      delete s.active; delete s.loaded;
+      cachePut('user:' + id, { v: 1, at: Date.now(), state: JSON.parse(JSON.stringify(s)), snap: JSON.parse(JSON.stringify(snap)) });
+    }, 400);
+  }
+  function useCache(c) {
+    var s = Object.assign(freshState(), c.state);
+    s.loaded = true; s.active = null;
+    state = s;
+    snap = Object.assign(emptySnap(), c.snap);
+    readActive();
+  }
+  // Back online: send what changed, then refresh from the server only if that worked.
+  window.addEventListener('online', function () {
+    if (!user || !state.loaded) return;
+    writeQueue = writeQueue.then(syncNow).then(function () {
+      if (!ui.offline || !lastSyncOk) return;
+      return loadRemote().then(function () { ui.offline = false; saveCache(); render(); }, function () { /* still offline */ });
+    });
+  });
   function initAuth() {
     if (!window.supabase || !window.supabase.createClient) {
       auth.fatal = 'Could not load the sign-in service. Check your connection and reload the page.';
@@ -598,7 +672,7 @@
         '<b>About you:</b> your @username, first and last name, age, gender and weight, which you give when you sign up. Later you may add your height, activity level and calorie goal to the calorie calculator.',
         '<b>What you log:</b> workouts, sets, reps, weights, cardio, plans, schedule, meals and nutrition details, targets and benchmarks.',
         '<b>What you share:</b> your friends list, your privacy settings, your profile photo if you add one, and any photos and captions you post.',
-        '<b>On your device:</b> a sign-in token and any workout you are halfway through are kept in your browser storage so the app works between visits.']) +
+        '<b>On your device:</b> a sign-in token, any workout you are halfway through, and a copy of your data are kept in your browser storage so the app works between visits and without a connection. Logging out removes the copy.']) +
       '<p>Some of this, such as your weight, what you eat and your gender, is information about your health. We only collect it because you choose to enter it, and by creating an account you agree to us using it to run the app for you.</p>' +
       '<h3>How we use it</h3>' + li([
         'To show your own workouts, meals, records, recaps and targets back to you, on any device you log in on.',
@@ -887,7 +961,7 @@
     });
 
     html += '<div class="addex"><div class="row"><div class="field"><label for="newex">Add exercise</label>' +
-      '<input id="newex" autocomplete="off" value="' + esc(ui.newEx) + '"></div>' +
+      '<input id="newex" autocomplete="off" list="exlist" value="' + esc(ui.newEx) + '"></div>' + exDatalistHTML() +
       '<button type="button" class="secondary" data-a="addex" style="align-self:flex-end">Add</button></div>' +
       '<label class="chk" style="margin-top:8px"><input type="checkbox" data-a="newcardio"' + (ui.newCardio ? ' checked' : '') + '> Cardio (log minutes instead of reps)</label></div>';
 
@@ -895,7 +969,7 @@
       '<button type="button" class="submit" data-a="finish">Finish workout</button>' +
       '<button type="button" class="linkbtn danger mute' + (ui.armed === 'discard' ? ' armed' : '') + '" data-a="discard">' +
       (ui.armed === 'discard' ? 'Tap again to discard this workout' : 'Discard workout') + '</button></div>';
-    return html;
+    return html + restBarHTML();
   }
 
   /* ---------- calories burned (estimate: MET x body weight x hours) ---------- */
@@ -1079,7 +1153,7 @@
     if (ui.edit) return editorHTML();
     var tabs = segHTML('pane', { plans: 'Plans', insights: 'Insights' }, ui.plp, 'Plans or insights', 'plp').replace('unit seg3', 'unit seg3 subtabs');
     if (ui.plp === 'insights') return tabs + insightsHTML();
-    var html = tabs + '<div class="wkhead"><h2 style="margin:0">Workout plans</h2><button type="button" class="secondary small add" data-a="plan-new">New plan</button></div>' +
+    var html = tabs + (ui.exMsg ? '<p class="exmsg">' + esc(ui.exMsg) + '</p>' : '') + '<div class="wkhead"><h2 style="margin:0">Workout plans</h2><button type="button" class="secondary small add" data-a="plan-new">New plan</button></div>' +
       (state.active ? '' : '<button type="button" class="quick" data-a="start"><span class="qi" aria-hidden="true"></span><span class="qt"><b>Quick start</b><small>Start an empty workout and add exercises as you go</small></span></button>');
     if (!state.plans.length) return html;
     return html + '<div class="plans">' + state.plans.map(function (p) { return planRow(p, true); }).join('') + '</div>';
@@ -1094,9 +1168,16 @@
     var html = '<h2>' + (e.id ? 'Edit plan' : 'New plan') + '</h2>' +
       '<div class="field"><label for="pname">Plan name</label><input id="pname" autocomplete="off" value="' + esc(e.name) + '"></div>' +
       '<div class="sect"><h4>Exercises</h4>';
+    var inPlan = {};
+    e.exercises.forEach(function (x) { inPlan[key(x.name)] = 1; });
+    var picks = sortedExercises().filter(function (x) { return !inPlan[key(x.n)]; });
+    html += picks.length ? '<div class="expick"><span class="pl">Your exercises <span class="sub">Tap to add</span></span><div class="exlist">' + picks.map(function (x) {
+      return '<button type="button" class="xchip pick" data-a="ex-pick" data-n="' + esc(x.n) + '">+ ' + esc(x.n) + (x.c ? '<small>cardio</small>' : '') + '</button>';
+    }).join('') + '</div></div>' : '';
+    html += exDatalistHTML();
     e.exercises.forEach(function (x, i) {
       html += '<div class="pe-row">' +
-        '<div class="field nm"><label for="pn' + i + '">Exercise ' + (i + 1) + '</label><input id="pn' + i + '" autocomplete="off" data-pe="' + i + '" data-f="name" value="' + esc(x.name) + '"></div>';
+        '<div class="field nm"><label for="pn' + i + '">Exercise ' + (i + 1) + '</label><input id="pn' + i + '" autocomplete="off" list="exlist" data-pe="' + i + '" data-f="name" value="' + esc(x.name) + '"></div>';
       if (!x.cardio) {
         html += '<div class="pills"><span class="pl">Sets <span class="sub">Tap a set to change its type</span></span><div class="setpills">' +
           x.types.map(function (t, j) {
@@ -1111,7 +1192,8 @@
         (i < e.exercises.length - 1 ? '<button type="button" class="linkbtn" data-a="plan-down" data-i="' + i + '">Down</button>' : '') +
         '<button type="button" class="linkbtn mute" data-a="plan-rmrow" data-i="' + i + '">Remove</button></div></div>';
     });
-    html += '<button type="button" class="secondary" data-a="plan-addrow" style="margin-top:6px">Add exercise</button></div>';
+    html += '<button type="button" class="secondary" data-a="plan-addrow" style="margin-top:6px">Type a new exercise</button>' +
+      '<p class="sub" style="margin-top:8px">New exercises are saved to your list when you save the plan.</p></div>';
     if (e.err) html += '<p class="err">' + esc(e.err) + '</p>';
     html += '<div class="peactions"><button type="button" class="primary" data-a="plan-save">Save plan</button>' +
       '<button type="button" class="secondary" data-a="plan-cancel">Cancel</button></div>';
@@ -1132,6 +1214,11 @@
     if (!name) { e.err = 'Give the plan a name.'; ui.focus = '#pname'; render(); return; }
     if (!list.length) { e.err = 'Add at least one exercise.'; render(); return; }
     var plan = { id: e.id || uid(), name: name, exercises: list };
+    var added = list.filter(function (x) { return rememberExercise(x.name, x.cardio); }).map(function (x) { return x.name; });
+    if (added.length) {
+      ui.exMsg = 'Saved ' + added.join(', ') + ' to your exercises.';
+      setTimeout(function () { ui.exMsg = ''; if (ui.tab === 'plans') softRender(); }, 6000);
+    }
     if (e.id) state.plans = state.plans.map(function (p) { return p.id === e.id ? plan : p; });
     else state.plans.push(plan);
     ui.edit = null;
@@ -1139,6 +1226,64 @@
     render();
   }
   function newPlanRow() { return { name: '', types: ['working'], cardio: false }; }
+
+  /* ---- your exercise list: every exercise you have used, so it can be picked again ---- */
+  function exerciseList() {
+    var c = state.calc;
+    if (!Array.isArray(c.exercises)) {
+      // First use: start the list from your plans and workout history.
+      var seen = {}, out = [];
+      var add = function (n, cardio) { var k = key(n || ''); if (!n || seen[k]) return; seen[k] = 1; out.push({ n: String(n), c: !!cardio }); };
+      state.plans.forEach(function (p) { p.exercises.forEach(function (x) { add(x.name, x.cardio); }); });
+      state.entries.forEach(function (e) { add(e.ex, e.cardio); });
+      c.exercises = out;
+    }
+    return c.exercises;
+  }
+  function findExercise(name) { var k = key(name); return exerciseList().filter(function (x) { return key(x.n) === k; })[0] || null; }
+  // Adds a new name to the list. Returns true if it was new.
+  function rememberExercise(name, cardio) {
+    name = String(name || '').trim().replace(/\s+/g, ' ');
+    if (!name || findExercise(name)) return false;
+    exerciseList().push({ n: name.slice(0, 60), c: !!cardio });
+    return true;
+  }
+  function sortedExercises() { return exerciseList().slice().sort(function (a, b) { return a.n.localeCompare(b.n); }); }
+  // Suggestions while typing an exercise name.
+  function exDatalistHTML() {
+    return '<datalist id="exlist">' + sortedExercises().map(function (x) { return '<option value="' + esc(x.n) + '">'; }).join('') + '</datalist>';
+  }
+  function exManagerHTML() {
+    var list = sortedExercises();
+    return '<div class="card"><h3>Your exercises</h3><p class="sub" style="margin:-6px 0 10px">Pick these when you build a plan or add an exercise during a workout. New ones are added when you use them.</p>' +
+      '<div class="addex" style="margin:0"><div class="row"><div class="field"><label for="exnew">Add an exercise</label><input id="exnew" autocomplete="off" maxlength="60" value="' + esc(ui.exNew || '') + '"></div>' +
+      '<button type="button" class="secondary" data-a="ex-add" style="align-self:flex-end">Add</button></div></div>' +
+      (list.length ? '<div class="exlist">' + list.map(function (x) {
+        return '<span class="xchip">' + esc(x.n) + (x.c ? '<small>cardio</small>' : '') +
+          '<button type="button" class="xrm" data-a="ex-rm" data-n="' + esc(x.n) + '" aria-label="Remove ' + esc(x.n) + ' from your exercises">\u00D7</button></span>';
+      }).join('') + '</div>' : '<p class="sub" style="margin-top:10px">No exercises yet.</p>') + '</div>';
+  }
+  function exAction(a, t) {
+    if (a === 'ex-add') {
+      var n = String(ui.exNew || '').trim();
+      if (!n) { ui.focus = '#exnew'; render(); return; }
+      rememberExercise(n, false);
+      ui.exNew = ''; ui.focus = '#exnew';
+      persist(); render();
+    } else if (a === 'ex-rm') {
+      var k = key(t.dataset.n);
+      state.calc.exercises = exerciseList().filter(function (x) { return key(x.n) !== k; });
+      persist(); render();
+    } else if (a === 'ex-pick') {
+      // Add a picked exercise to the plan being edited, filling an empty row if there is one.
+      var e = ui.edit, x = findExercise(t.dataset.n);
+      if (!e || !x) return;
+      var empty = e.exercises.filter(function (r) { return !r.name.trim(); })[0];
+      if (empty) { empty.name = x.n; empty.cardio = !!x.c; }
+      else e.exercises.push({ name: x.n, types: ['working'], cardio: !!x.c });
+      render();
+    }
+  }
   function planAction(a, t) {
     var e = ui.edit;
     var i = +t.dataset.i;
@@ -2314,18 +2459,39 @@
     return '<div class="plist">' + fr.results.map(function (c) { return personRow(c, false); }).join('') + '</div>';
   }
   /* ---- leaderboard (friends_leaderboard in supabase/leaderboard.sql) ---- */
-  var LB_METRICS = { volume: 'Weight moved', workouts: 'Workouts' };
+  var LB_METRICS = { volume: 'Weight moved', workouts: 'Workouts', exercise: 'Exercise' };
   var LB_PERIODS = { week: 'This week', month: 'This month', all: 'All time' };
+  // The first day of this week (Monday) or month in your own time zone, as YYYY-MM-DD.
+  function periodStart(period) {
+    var d = new Date();
+    if (period === 'week') d.setDate(d.getDate() - (d.getDay() + 6) % 7);
+    else if (period === 'month') d.setDate(1);
+    else return null;
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+  function lbExercises() { return sortedExercises().filter(function (x) { return !x.c; }); }
   function loadBoard() {
-    var fr = ui.fr, period = fr.period;
+    var fr = ui.fr, period = fr.period, ex = fr.metric === 'exercise' ? (fr.lbEx || (lbExercises()[0] || {}).n || '') : null;
+    if (ex === '') { fr.board = []; fr.boardLoading = false; return; }
+    var ask = period + '|' + ex;
+    fr.boardAsk = ask;
     fr.boardLoading = true;
-    sb.rpc('friends_leaderboard', { period: period }).then(function (r) {
-      if (fr.period !== period) return;
+    var done = function (r) {
+      if (fr.boardAsk !== ask) return;
       fr.boardLoading = false;
       fr.boardErr = !r.error ? '' : notSetUp(r.error) ? 'The leaderboard is not set up in Supabase yet. Run supabase/leaderboard.sql first.' : friendly(r.error);
       fr.board = r.error ? [] : (r.data || []);
       softRender();
-    }, function (e) { fr.boardLoading = false; fr.boardErr = friendly(e); fr.board = []; softRender(); });
+    };
+    sb.rpc('friends_leaderboard', { period: period, since: periodStart(period), exercise: ex }).then(function (r) {
+      // Before community.sql has been run only the first version exists, which has no exercise ranking.
+      if (r.error && notSetUp(r.error)) {
+        if (ex) { done({ error: { message: 'Run supabase/community.sql in Supabase to rank by exercise.' } }); return; }
+        sb.rpc('friends_leaderboard', { period: period }).then(done, function (e) { done({ error: e }); });
+        return;
+      }
+      done(r);
+    }, function (e) { done({ error: e }); });
   }
   function segHTML(action, opts, cur, label, uiKey) {
     return '<div class="unit seg3" role="group" aria-label="' + label + '">' + Object.keys(opts).map(function (k) {
@@ -2333,6 +2499,7 @@
     }).join('') + '</div>';
   }
   function boardValue(c, m) {
+    if (m === 'exercise') return +c.best_kg > 0 ? { n: fmtW(+c.best_kg), u: state.unit + ' best' } : { n: '-', u: 'not done' };
     return m === 'workouts'
       ? { n: String(c.workouts), u: c.workouts === 1 ? 'workout' : 'workouts' }
       : { n: Math.round(toDisp(+c.volume_kg || 0)).toLocaleString('en-GB'), u: state.unit };
@@ -2340,15 +2507,22 @@
   function boardHTML() {
     var fr = ui.fr, m = fr.metric;
     if (fr.board === null && !fr.boardLoading) setTimeout(loadBoard, 0);
-    var h = '<div class="lbctl">' + segHTML('fr-metric', LB_METRICS, m, 'Rank by') + segHTML('fr-period', LB_PERIODS, fr.period, 'Time period') + '</div>';
+    var exs = lbExercises(), cur = fr.lbEx || (exs[0] || {}).n || '';
+    var h = '<div class="lbctl">' + segHTML('fr-metric', LB_METRICS, m, 'Rank by') +
+      (m === 'exercise' ? (exs.length ? '<div class="field"><label for="lbex">Exercise</label><select id="lbex">' + exs.map(function (x) {
+        return '<option value="' + esc(x.n) + '"' + (key(x.n) === key(cur) ? ' selected' : '') + '>' + esc(x.n) + '</option>';
+      }).join('') + '</select></div>' : '<p class="sub">Add exercises to your list first (Profile \u2192 Settings).</p>') : '') +
+      segHTML('fr-period', LB_PERIODS, fr.period, 'Time period') + '</div>';
+    if (m === 'exercise' && !exs.length) return h;
     if (fr.boardErr) return h + '<p class="err">' + esc(fr.boardErr) + '</p>';
     if (!fr.board) return h + '<p class="sub">Loading leaderboard...</p>';
-    var key2 = m === 'workouts' ? 'workouts' : 'volume_kg';
+    var key2 = m === 'workouts' ? 'workouts' : m === 'exercise' ? 'best_kg' : 'volume_kg';
     var rows = fr.board.slice().sort(function (a, b) { return (+b[key2] - +a[key2]) || String(a.name).localeCompare(String(b.name)); });
     var rank = 0, last = null;
     h += '<ol class="lb' + (fr.boardLoading ? ' stale' : '') + '">' + rows.map(function (c, i) {
       if (+c[key2] !== last) { rank = i + 1; last = +c[key2]; }
       var v = boardValue(c, m), other = boardValue(c, m === 'workouts' ? 'volume' : 'workouts');
+      if (!(+c[key2] > 0) && m === 'exercise') rank = rows.length;
       return '<li class="lbrow' + (c.me ? ' me' : '') + '"><span class="rank' + (rank <= 3 && +c[key2] > 0 ? ' r' + rank : '') + '" aria-label="Rank ' + rank + '">' + rank + '</span>' +
         whoHTML(c, c.me, other.n + ' ' + other.u) +
         '<span class="lbv"><b class="num">' + v.n + '</b><small>' + v.u + '</small></span></li>';
@@ -2491,7 +2665,7 @@
   }
   // Every copy of a post on screen: the feed, your posts and the profile you have open.
   function postCopies(id) {
-    var lists = [ui.fr.lists.feed.items, ui.fr.lists.mine.items, ui.fr.view && ui.fr.view.posts];
+    var lists = [ui.fr.lists.feed.items, ui.fr.lists.mine.items, ui.fr.view && ui.fr.view.posts, ui.extraPosts];
     var out = [];
     lists.forEach(function (l) { (l || []).forEach(function (p) { if (p.id === id) out.push(p); }); });
     return out;
@@ -2504,7 +2678,8 @@
       var n = +counts[r[0]] || 0, on = mine === r[0];
       return '<button type="button" class="react' + (on ? ' on' : '') + '" data-a="post-react" data-id="' + esc(p.id) + '" data-k="' + r[0] + '" aria-pressed="' + on + '" aria-label="' + r[2] + (n ? ', ' + n : '') + '">' +
         '<span aria-hidden="true">' + r[1] + '</span>' + (n ? '<b>' + n + '</b>' : '') + '</button>';
-    }).join('') + '</div>';
+    }).join('') + (p.comments !== undefined ? '<button type="button" class="react cmt" data-a="post-view" data-id="' + esc(p.id) + '" aria-label="Comments, ' + p.comments + '">' +
+      '<span aria-hidden="true">\uD83D\uDCAC</span>' + (+p.comments ? '<b>' + p.comments + '</b>' : '') + '</button>' : '') + '</div>';
   }
   // Shows the change straight away, then takes the counts the database sends back.
   function react(id, kind) {
@@ -2537,7 +2712,8 @@
     var label = p.kind === 'meal' ? 'Meal' : 'Workout';
     var media = p.image_path ? photoBox('div', 'pimg', 'posts', p.image_path, label + ' photo from @' + p.username, '') : postStatHTML(p);
     return '<article class="post"><div class="phd">' + whoHTML(p, p.mine, label + ' \u00B7 ' + timeAgo(p.created_at)) +
-      (p.mine ? '<button type="button" class="linkbtn danger mute' + (armed ? ' armed' : '') + '" data-a="post-del" data-id="' + esc(p.id) + '">' + (armed ? 'Tap again to delete' : 'Delete') + '</button>' : '') +
+      (p.mine ? '<button type="button" class="linkbtn danger mute' + (armed ? ' armed' : '') + '" data-a="post-del" data-id="' + esc(p.id) + '">' + (armed ? 'Tap again to delete' : 'Delete') + '</button>'
+        : '<button type="button" class="linkbtn mute" data-a="sf-report" data-post="' + esc(p.id) + '">Report</button>') +
       '</div>' + media +
       '<div class="pbody">' + detailsHTML(p.kind, p.details) +
       (p.caption ? '<p class="pcap"><b>@' + esc(p.username) + '</b> ' + esc(p.caption) + '</p>' : '') + reactBarHTML(p) + '</div></article>';
@@ -2551,10 +2727,78 @@
   }
   function postGridHTML(list) { return '<div class="pgrid">' + list.map(postTileHTML).join('') + '</div>'; }
   function postViewHTML() {
-    var p = postCopies(ui.viewPost)[0];
+    var p = postCopies(ui.viewPost)[0], v = ui.vp;
     if (!p) return '';
-    return '<div class="scanov postov" data-a="post-close"><div class="scansheet pview" data-a="post-noop" role="dialog" aria-modal="true" aria-label="Post">' +
-      '<div class="sheethead"><span></span><button type="button" class="linkbtn mute" data-a="post-close">Close</button></div>' + postCardHTML(p) + '</div></div>';
+    var h = '<div class="scanov postov" data-a="post-close"><div class="scansheet pview" data-a="post-noop" role="dialog" aria-modal="true" aria-label="Post">' +
+      '<div class="sheethead"><span></span><button type="button" class="linkbtn mute" data-a="post-close">Close</button></div>' + postCardHTML(p);
+    if (v && v.id === p.id && p.comments !== undefined) {
+      var total = 0, counts = (p.reactions && p.reactions.counts) || {};
+      Object.keys(counts).forEach(function (k) { total += +counts[k] || 0; });
+      if (total) {
+        h += '<button type="button" class="linkbtn" data-a="cm-reactors">' + (v.showReactors ? 'Hide who reacted' : 'See who reacted (' + total + ')') + '</button>';
+        if (v.showReactors) {
+          h += !v.reactors ? '<p class="sub">Loading...</p>' : '<div class="plist">' + v.reactors.map(function (c) {
+            var r = REACTIONS.filter(function (x) { return x[0] === c.kind; })[0];
+            return '<div class="person">' + whoHTML(c, c.me, '@' + esc(c.username)) + '<span class="pact" aria-label="' + (r ? r[2] : '') + '">' + (r ? r[1] : '') + '</span></div>';
+          }).join('') + '</div>';
+        }
+      }
+      h += '<h4 class="cmhead">Comments</h4>';
+      if (!v.comments) h += '<p class="sub">Loading comments...</p>';
+      else if (!v.comments.length) h += '<p class="sub">No comments yet.</p>';
+      else h += '<div class="cmlist">' + v.comments.map(function (c) {
+        var armed = ui.armed === 'cm:' + c.id;
+        return '<div class="cm">' + avatarHTML(c) + '<div class="cmbody"><p><b>' + esc(c.mine ? 'You' : c.name) + '</b> <span class="sub">' + timeAgo(c.created_at) + '</span></p><p class="cmtext">' + esc(c.body) + '</p>' +
+          (c.can_delete ? '<button type="button" class="linkbtn danger mute' + (armed ? ' armed' : '') + '" data-a="cm-del" data-id="' + esc(c.id) + '">' + (armed ? 'Tap again to delete' : 'Delete') + '</button>' : '') + '</div></div>';
+      }).join('') + '</div>';
+      h += '<div class="cmform"><div class="field"><label for="cmin">Add a comment</label><input id="cmin" maxlength="500" autocomplete="off" value="' + esc(v.draft) + '"></div>' +
+        '<button type="button" class="primary" data-a="cm-send"' + (v.busy ? ' disabled' : '') + '>' + (v.busy ? 'Sending...' : 'Send') + '</button></div>' +
+        (v.err ? '<p class="err" role="alert">' + esc(v.err) + '</p>' : '');
+    }
+    return h + '</div></div>';
+  }
+  // Opening a post loads its comments, if comments are set up.
+  function openPost(id) {
+    ui.viewPost = id;
+    var p = postCopies(id)[0];
+    ui.vp = { id: id, comments: null, reactors: null, showReactors: false, draft: '', busy: false, err: '' };
+    render();
+    if (!p || p.comments === undefined) return;
+    sb.rpc('post_comments', { pid: id }).then(function (r) {
+      if (!ui.vp || ui.vp.id !== id) return;
+      ui.vp.comments = r.error ? [] : (r.data || []);
+      softRender();
+    }, function () { if (ui.vp && ui.vp.id === id) { ui.vp.comments = []; softRender(); } });
+  }
+  function setCommentCount(id, n) { postCopies(id).forEach(function (p) { p.comments = n; }); }
+  function commentAction(a, t) {
+    var v = ui.vp;
+    if (!v) return;
+    if (a === 'cm-send') {
+      var msg = String(v.draft || '').trim();
+      if (!msg) { ui.focus = '#cmin'; render(); return; }
+      if (v.busy) return;
+      v.busy = true; v.err = ''; render();
+      sb.rpc('add_comment', { pid: v.id, msg: msg }).then(function (r) {
+        v.busy = false;
+        if (r.error) { v.err = friendly(r.error); render(); return; }
+        v.comments = r.data || []; v.draft = ''; setCommentCount(v.id, v.comments.length);
+        render();
+      }, function (e) { v.busy = false; v.err = friendly(e); render(); });
+    } else if (a === 'cm-del') {
+      var id = t.dataset.id;
+      if (ui.armed !== 'cm:' + id) { ui.armed = 'cm:' + id; render(); return; }
+      ui.armed = null;
+      sb.rpc('delete_comment', { cid: id }).then(function (r) {
+        if (r.error) { v.err = friendly(r.error); render(); return; }
+        v.comments = r.data || []; setCommentCount(v.id, v.comments.length);
+        render();
+      }, function (e) { v.err = friendly(e); render(); });
+    } else if (a === 'cm-reactors') {
+      v.showReactors = !v.showReactors;
+      render();
+      if (v.showReactors) sb.rpc('post_reactors', { pid: v.id }).then(function (r) { v.reactors = r.error ? [] : (r.data || []); softRender(); }, function () { v.reactors = []; softRender(); });
+    }
   }
   function postsListHTML(which, emptyHTML, asGrid) {
     if (!state.postsReady) return '<div class="card"><h3>Posts are not switched on yet</h3><p class="sub">Run supabase/posts.sql in the Supabase SQL Editor, then reload the app.</p></div>';
@@ -2583,8 +2827,8 @@
       return;
     }
     if (a === 'post-react') { react(t.dataset.id, t.dataset.k); return; }
-    if (a === 'post-view') { ui.viewPost = t.dataset.id; render(); return; }
-    if (a === 'post-close') { ui.viewPost = null; render(); return; }
+    if (a === 'post-view') { openPost(t.dataset.id); return; }
+    if (a === 'post-close') { ui.viewPost = null; ui.vp = null; render(); return; }
     if (a === 'post-more') { loadPosts(t.dataset.w, true); render(); return; }
     if (a === 'post-del') {
       var id = t.dataset.id, L = ui.fr.lists;
@@ -2626,10 +2870,151 @@
     if (fr.view || fr.viewLoading) return friendViewHTML();
     var h = '<h2 class="pagetitle">Feed</h2>', gate = socialGate();
     if (gate) return h + gate;
-    h += segHTML('fr-pane', { feed: 'Feed', board: 'Leaderboard' }, fr.pane, 'Feed or leaderboard').replace('unit seg3', 'unit seg3 subtabs');
+    var unseen = unseenActivity();
+    h += segHTML('fr-pane', { feed: 'Feed', board: 'Leaderboard', activity: 'Activity' + (unseen ? ' (' + unseen + ')' : '') }, fr.pane, 'Feed section').replace('unit seg3', 'unit seg3 subtabs');
+    h += privacyAskHTML();
     if (fr.pane === 'board') return h + boardHTML();
+    if (fr.pane === 'activity') return h + activityHTML();
     return h + postsListHTML('feed', '<div class="card"><h3>No posts yet</h3><p class="sub">Finish a workout or log a meal, then tap Share. Posts from your friends show up here too. Find friends in your Profile.</p></div>');
   }
+  /* ---- activity: reactions, comments and friend requests (my_activity in supabase/community.sql) ---- */
+  function seenKey() { return 'lifts.activitySeen.' + (user ? user.id : ''); }
+  function activitySeen() { try { return localStorage.getItem(seenKey()) || ''; } catch (e) { return ''; } }
+  function unseenActivity() {
+    var seen = activitySeen(), items = ui.act.items || [];
+    return items.filter(function (x) { return !seen || String(x.ts) > seen; }).length;
+  }
+  function markActivitySeen() {
+    var items = ui.act.items || [];
+    if (!items.length) return;
+    try { localStorage.setItem(seenKey(), String(items[0].ts)); } catch (e) { /* storage can be blocked */ }
+  }
+  function loadActivity() {
+    var A = ui.act;
+    if (A.loading || !sb) return;
+    A.loading = true;
+    sb.rpc('my_activity').then(function (r) {
+      A.loading = false;
+      A.err = !r.error ? '' : notSetUp(r.error) ? 'Run supabase/community.sql in Supabase to see your activity here.' : friendly(r.error);
+      A.items = r.error ? [] : (r.data || []);
+      if (ui.tab === 'feed' && ui.fr.pane === 'activity') markActivitySeen();
+      softRender();
+    }, function (e) { A.loading = false; A.err = friendly(e); A.items = []; softRender(); });
+  }
+  function activityHTML() {
+    var A = ui.act;
+    if (A.items === null && !A.loading) setTimeout(loadActivity, 0);
+    if (A.err) return '<p class="err">' + esc(A.err) + '</p>';
+    if (!A.items) return '<p class="sub">Loading activity...</p>';
+    if (!A.items.length) return '<div class="card"><h3>Nothing yet</h3><p class="sub">When friends react to or comment on your posts, or send you a friend request, it shows up here.</p></div>';
+    return '<div class="plist">' + A.items.map(function (x) {
+      var r = REACTIONS.filter(function (y) { return y[0] === x.detail; })[0], what, act = '';
+      if (x.kind === 'reaction') what = 'reacted ' + (r ? r[1] : '') + ' to your post';
+      else if (x.kind === 'comment') what = 'commented: \u201C' + esc(x.detail || '') + '\u201D';
+      else if (x.kind === 'request') what = 'sent you a friend request';
+      else what = 'accepted your friend request';
+      if (x.post_id) act = '<button type="button" class="secondary small" data-a="act-post" data-id="' + esc(x.post_id) + '">View</button>';
+      else if (x.kind === 'request' && (ui.fr.list || []).some(function (c) { return c.username === x.username && c.relation === 'incoming'; }))
+        act = '<button type="button" class="primary small" data-a="fr-add" data-u="' + esc(x.username) + '">Accept</button>';
+      return '<div class="person act">' + whoHTML(x, false, what + ' \u00B7 ' + timeAgo(x.ts)) + (act ? '<div class="pact">' + act + '</div>' : '') + '</div>';
+    }).join('') + '</div>';
+  }
+  // Opens a post from the activity list, fetching it if it is not already on screen.
+  function openPostById(id) {
+    if (postCopies(id).length) { openPost(id); return; }
+    sb.rpc('get_post', { pid: id }).then(function (r) {
+      if (r.error || !r.data) return;
+      ui.extraPosts = [r.data];
+      openPost(id);
+    });
+  }
+
+  /* ---- first visit: ask who should see your activity ---- */
+  function privacyAskHTML() {
+    if (!state.socialReady || !state.username || state.sharingChosen || !ui.privAsk) return '';
+    return '<div class="card privask"><h3>Who should see your activity?</h3><p class="sub">You can change this any time in Profile \u2192 Settings.</p>' +
+      '<div class="actl">' +
+      '<button type="button" class="actbtn" data-a="sf-preset" data-v="friends"><span class="an">Friends</span><span class="sub">Friends see your workouts and plans. Meals and body stats stay private.</span></button>' +
+      '<button type="button" class="actbtn" data-a="sf-preset" data-v="private"><span class="an">Only me</span><span class="sub">Keep everything private. You can still post and use the leaderboard.</span></button>' +
+      '<button type="button" class="actbtn" data-a="sf-preset" data-v="custom"><span class="an">Choose each part</span><span class="sub">Open the privacy settings.</span></button>' +
+      '</div></div>';
+  }
+
+  /* ---- blocking and reporting (supabase/safety.sql) ---- */
+  var REPORT_REASONS = [['spam', 'Spam'], ['inappropriate', 'Inappropriate photo or post'], ['harassment', 'Harassment or bullying'], ['other', 'Something else']];
+  function reportSheetHTML() {
+    var R = ui.report;
+    var h = '<div class="scanov postov"><div class="scansheet" data-a="post-noop" role="dialog" aria-modal="true" aria-labelledby="rep-h">' +
+      '<div class="sheethead"><h3 id="rep-h">' + (R.post ? 'Report post' : 'Report @' + esc(R.user)) + '</h3><button type="button" class="linkbtn mute" data-a="sf-close">' + (R.done ? 'Done' : 'Cancel') + '</button></div>';
+    if (R.done) {
+      return h + '<p>Thanks for letting us know. Reports are reviewed and anything that breaks the rules is removed.</p>' +
+        (R.who && R.who !== state.username ? '<button type="button" class="secondary" data-a="sf-block" data-u="' + esc(R.who) + '">Also block @' + esc(R.who) + '</button>' : '') + '</div></div>';
+    }
+    h += '<p class="sub">Why are you reporting this?</p><div class="actl" role="radiogroup">' + REPORT_REASONS.map(function (r) {
+      return '<button type="button" class="actbtn" role="radio" data-a="sf-reason" data-v="' + r[0] + '" aria-checked="' + (R.reason === r[0]) + '" aria-pressed="' + (R.reason === r[0]) + '"><span class="an">' + r[1] + '</span></button>';
+    }).join('') + '</div>' +
+      '<div class="field"><label for="repdet">More details <span class="sub">(optional)</span></label><input id="repdet" maxlength="1000" autocomplete="off" value="' + esc(R.details) + '"></div>' +
+      (R.err ? '<p class="err" role="alert">' + esc(R.err) + '</p>' : '') +
+      '<button type="button" class="submit" data-a="sf-send"' + (R.busy ? ' disabled' : '') + '>' + (R.busy ? 'Sending...' : 'Send report') + '</button></div></div>';
+    return h;
+  }
+  function safetyErr(e) { return notSetUp(e) ? 'Run supabase/safety.sql in Supabase to turn on blocking and reporting.' : friendly(e); }
+  function loadBlocks() {
+    sb.rpc('my_blocks').then(function (r) { ui.blocks = r.error ? (notSetUp(r.error) ? false : []) : (r.data || []); softRender(); }, function () { ui.blocks = []; softRender(); });
+  }
+  function blocksHTML() {
+    if (!state.socialReady || ui.blocks === false) return '';
+    if (ui.blocks === null) setTimeout(loadBlocks, 0);
+    var list = ui.blocks || [];
+    return '<div class="card"><h3>Blocked accounts</h3>' + (ui.blockMsg ? '<p class="exmsg">' + esc(ui.blockMsg) + '</p>' : '') +
+      (!ui.blocks ? '<p class="sub">Loading...</p>' : !list.length ? '<p class="sub">You have not blocked anyone. Blocked people cannot find you, see your profile or posts, or send you requests.</p>'
+        : '<div class="plist">' + list.map(function (c) {
+          return '<div class="person">' + avatarHTML(c) + '<span class="pmeta"><span class="pn"><span class="pnt">' + esc(c.name) + '</span></span><span class="sub">@' + esc(c.username) + '</span></span>' +
+            '<div class="pact"><button type="button" class="secondary small" data-a="sf-unblock" data-u="' + esc(c.username) + '">Unblock</button></div></div>';
+        }).join('') + '</div>') + '</div>';
+  }
+  function safetyAction(a, t) {
+    var R = ui.report;
+    if (a === 'sf-report') {
+      var p = t.dataset.post ? postCopies(t.dataset.post)[0] : null;
+      ui.report = { post: t.dataset.post || null, user: t.dataset.u || null, who: p ? p.username : t.dataset.u, reason: '', details: '', busy: false, done: false, err: '' };
+      render();
+    } else if (a === 'sf-close') { ui.report = null; render(); }
+    else if (a === 'sf-reason' && R) { R.reason = t.dataset.v; R.err = ''; render(); }
+    else if (a === 'sf-send' && R) {
+      if (!R.reason) { R.err = 'Choose a reason.'; render(); return; }
+      if (R.busy) return;
+      R.busy = true; render();
+      sb.rpc('report_content', { target_post: R.post, target_user: R.post ? null : R.user, reason: R.reason, details: R.details || null }).then(function (r) {
+        R.busy = false;
+        if (r.error) R.err = safetyErr(r.error); else R.done = true;
+        render();
+      }, function (e) { R.busy = false; R.err = safetyErr(e); render(); });
+    } else if (a === 'sf-block') {
+      var u = t.dataset.u;
+      if (ui.armed !== 'block:' + u && !(R && R.done)) { ui.armed = 'block:' + u; render(); return; }
+      ui.armed = null;
+      sb.rpc('block_user', { uname: u }).then(function (r) {
+        if (r.error) { if (R) { R.err = safetyErr(r.error); R.done = false; } else ui.fr.err = safetyErr(r.error); render(); return; }
+        // They disappear from everywhere straight away.
+        ui.report = null; ui.viewPost = null; ui.vp = null;
+        ui.fr.view = null; ui.fr.viewLoading = false; ui.fr.viewU = null; ui.fr.board = null; ui.fr.results = null;
+        resetPostLists(); ui.act.items = null; ui.blocks = null; ui.myStats = null;
+        ui.blockMsg = 'Blocked @' + u + '.';
+        loadFriends();
+        render();
+      }, function (e) { ui.fr.err = safetyErr(e); render(); });
+    } else if (a === 'sf-unblock') {
+      sb.rpc('unblock_user', { uname: t.dataset.u }).then(function () { ui.blockMsg = 'Unblocked @' + t.dataset.u + '.'; ui.blocks = null; render(); });
+    } else if (a === 'sf-preset') {
+      var v = t.dataset.v;
+      if (v === 'custom') { ui.privAsk = false; ui.tab = 'profile'; ui.pp = 'settings'; render(); window.scrollTo(0, 0); return; }
+      state.sharing = v === 'private' ? { workouts: 'private', meals: 'private', plans: 'private', body: 'private' } : shareDefaults();
+      saveSharing();
+      render();
+    }
+  }
+
   function incomingCount() { return (ui.fr.list || []).filter(function (c) { return c.relation === 'incoming'; }).length; }
   function friendsPaneHTML() {
     var fr = ui.fr, gate = socialGate();
@@ -2669,8 +3054,14 @@
     if (a === 'fr-open') { openProfile(u); return; }
     if (a === 'fr-back') { fr.view = null; fr.viewLoading = false; fr.viewU = null; render(); window.scrollTo(0, 0); return; }
     if (a === 'fr-more') { fr.shown += 10; render(); return; }
-    if (a === 'fr-pane') { fr.pane = t.dataset.v; if (fr.pane === 'board') loadBoard(); if (fr.pane === 'feed' && state.postsReady) loadPosts('feed', false); render(); return; }
-    if (a === 'fr-metric') { fr.metric = t.dataset.v; render(); return; }
+    if (a === 'fr-pane') {
+      fr.pane = t.dataset.v;
+      if (fr.pane === 'board') loadBoard();
+      if (fr.pane === 'feed' && state.postsReady) loadPosts('feed', false);
+      if (fr.pane === 'activity') { markActivitySeen(); loadActivity(); }
+      render(); return;
+    }
+    if (a === 'fr-metric') { fr.metric = t.dataset.v; if (fr.metric === 'exercise' || (fr.board && fr.board[0] && fr.board[0].best_kg === undefined)) loadBoard(); render(); return; }
     if (a === 'fr-period') { if (fr.period === t.dataset.v) return; fr.period = t.dataset.v; loadBoard(); render(); return; }
     if (a === 'fr-share') {
       if (state.sharing[t.dataset.k] === t.dataset.v) return;
@@ -2699,7 +3090,7 @@
   function saveSharing() {
     var sh = state.sharing;
     sb.from('sharing').upsert({ user_id: user.id, workouts: sh.workouts, meals: sh.meals, plans: sh.plans, body: sh.body, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
-      .then(function (r) { var was = ui.shareErr; ui.shareErr = r.error ? friendly(r.error) : ''; if (was !== ui.shareErr) render(); },
+      .then(function (r) { var was = ui.shareErr; ui.shareErr = r.error ? friendly(r.error) : ''; if (!r.error && !state.sharingChosen) { state.sharingChosen = true; render(); } else if (was !== ui.shareErr) render(); },
         function (e) { ui.shareErr = friendly(e); render(); });
   }
   function privacyHTML() {
@@ -2802,6 +3193,11 @@
       details: v.body ? bodyDetails(v.body.gender, v.body.age, v.body.weight_kg) : [],
       counts: { posts: st.posts !== undefined ? st.posts : v.posts ? v.posts.length : null, friends: st.friends, workouts: st.workouts },
       actions: viewActions(v) });
+    if (v.relation !== 'self') {
+      var armedB = ui.armed === 'block:' + v.username;
+      h += '<div class="safety"><button type="button" class="linkbtn mute" data-a="sf-report" data-u="' + esc(v.username) + '">Report</button>' +
+        '<button type="button" class="linkbtn danger mute' + (armedB ? ' armed' : '') + '" data-a="sf-block" data-u="' + esc(v.username) + '">' + (armedB ? 'Tap again to block' : 'Block') + '</button></div>';
+    }
     if (ui.fr.err) h += '<p class="err">' + esc(ui.fr.err) + '</p>';
     return h + postsSect(v) + workoutsSect(v) + mealsSect(v) + plansSect(v);
   }
@@ -2909,6 +3305,11 @@
   function profileAction(a) {
     var c = state.calc;
     if (a === 'pf-rmphoto') { removeAvatar(); return; }
+    if (a === 'pf-export') { exportData(); return; }
+    if (a === 'pf-install') {
+      if (installPrompt) { installPrompt.prompt(); installPrompt.userChoice.then(function () { installPrompt = null; render(); }); }
+      return;
+    }
     if (a === 'pf-edit') ui.pf = { first: nameParts(c).first, last: nameParts(c).last, uname: state.username, age: c.age ? String(c.age) : '', gender: c.gender || '', wt: state.bodyKg > 0 ? fmtW(state.bodyKg) : '', err: '' };
     else if (a === 'pf-cancel') ui.pf = null;
     else if (a === 'pf-save') {
@@ -2938,11 +3339,58 @@
     }
     render();
   }
+  // Everything saved to the account, as one JSON file. Photos are listed by name rather than included.
+  function exportData() {
+    if (ui.exporting) return;
+    ui.exporting = true; ui.exportErr = ''; render();
+    var posts = state.postsReady ? soft(sb.from('posts').select('*').eq('user_id', user.id).order('created_at')) : Promise.resolve({ data: [] });
+    posts.then(function (pr) {
+      var c = state.calc || {};
+      var data = {
+        exported_at: new Date().toISOString(),
+        account: { email: user.email, username: state.username || null, name: c.name || null, first_name: c.first || null, last_name: c.last || null,
+          age: c.age || null, gender: c.gender || null, weight_kg: state.bodyKg || null, unit: state.unit, verified: state.verified },
+        settings: { calorie_target: state.calTarget || null, nutrient_targets: state.targets, calculator: c, benchmarks: state.bench, privacy: state.sharing },
+        plans: state.plans,
+        schedule: state.schedule,
+        workouts: state.workouts.map(function (w) {
+          return { date: w.date, started_at: new Date(w.start).toISOString(), ended_at: new Date(w.end).toISOString(), plan: w.plan,
+            sets: state.entries.filter(function (e) { return e.wid === w.id; }).map(function (e) {
+              return e.cardio ? { exercise: e.ex, cardio: true, minutes: e.mins } : { exercise: e.ex, weight_kg: e.kg, reps: e.reps, type: typeOf(e) };
+            }) };
+        }),
+        meals: state.meals.map(function (m) {
+          return { date: m.date, category: m.cat || null, name: m.name, kcal: m.kcal, protein: m.p, carbs: m.c, fats: m.f, nutrients: m.d || null, amount_g: m.amt || null };
+        }),
+        friends: (ui.fr.list || []).map(function (f) { return { username: f.username, name: f.name, status: f.relation }; }),
+        posts: (pr.data || []).map(function (p) { return { created_at: p.created_at, kind: p.kind, caption: p.caption, details: p.details, photo_file: p.image_path }; }),
+        profile_photo_file: state.avatar || null
+      };
+      var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'lifts-data-' + today() + '.json';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+      ui.exporting = false; render();
+    }, function (e) { ui.exporting = false; ui.exportErr = friendly(e); render(); });
+  }
+  function installHTML() {
+    var standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone;
+    if (standalone) return '';
+    var ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    return '<div class="card"><h3>Install Lifts</h3><p class="sub">Add Lifts to your home screen. It opens full-screen like an app and keeps working when you have no signal.</p>' +
+      (installPrompt ? '<button type="button" class="primary" data-a="pf-install" style="margin-top:12px">Install app</button>'
+        : '<p class="sub" style="margin-top:8px"><b>' + (ios ? 'In Safari, tap the Share button, then Add to Home Screen.' : 'In your browser menu, choose Install app or Add to Home screen.') + '</b></p>') + '</div>';
+  }
   function settingsHTML() {
     return '<button type="button" class="backbtn" data-a="fr-ppane" data-v="posts">Profile</button><h2 class="pagetitle">Settings</h2>' +
       '<div class="card"><h3>Account</h3><div class="prow"><span>Email</span><span>' + esc((user && user.email) || '') + '</span></div>' +
       '<div class="prow"><span>Units</span>' + unitToggleHTML() + '</div></div>' +
-      privacyHTML() +
+      installHTML() + exManagerHTML() + privacyHTML() + blocksHTML() +
+      '<div class="card"><h3>Your data</h3><p class="sub">Download a copy of everything you have saved: workouts, sets, plans, meals, targets, profile, friends and posts.</p>' +
+      '<button type="button" class="secondary" data-a="pf-export" style="margin-top:12px"' + (ui.exporting ? ' disabled' : '') + '>' + (ui.exporting ? 'Preparing...' : 'Download my data') + '</button>' +
+      (ui.exportErr ? '<p class="err">' + esc(ui.exportErr) + '</p>' : '') + '</div>' +
       '<div class="dzone" style="margin-top:20px"><button type="button" class="linkbtn mute" data-a="auth-policy">Privacy Policy</button></div>' + footHTML();
   }
   function profileHTML() {
@@ -2951,7 +3399,7 @@
     if (ui.pp === 'settings') return settingsHTML();
     var head = profileCard();
     if (ui.pf) return '<h2 class="pagetitle">Profile</h2>' + head;
-    var h = '<h2 class="pagetitle">Profile</h2>' + head;
+    var h = '<h2 class="pagetitle">Profile</h2>' + head + privacyAskHTML();
     if (!state.socialReady) return h + '<p class="sub" style="margin-top:16px">Find your recap, records and PR history in Plans \u2192 Insights.</p>';
     var n = incomingCount(), pane = ui.pp === 'friends' ? 'friends' : 'posts';
     h += segHTML('fr-ppane', { posts: 'Posts', friends: 'Friends' + (n ? ' (' + n + ')' : '') }, pane, 'Profile section').replace('unit seg3', 'unit seg3 subtabs');
@@ -2979,10 +3427,11 @@
       b.setAttribute('aria-selected', String(ui.tab === t));
       b.setAttribute('aria-controls', 'panel');
       b.innerHTML = t.charAt(0).toUpperCase() + t.slice(1) + (t === 'workout' && state.active ? '<span class="live" title="Workout in progress"></span>' : '') +
-        (t === 'profile' && incomingCount() ? '<span class="live dot" title="Friend requests"></span>' : '');
+        (t === 'profile' && incomingCount() ? '<span class="live dot" title="Friend requests"></span>' : '') +
+        (t === 'feed' && unseenActivity() ? '<span class="live dot" title="New activity"></span>' : '');
     });
     var sh = $('sheet');
-    if (sh) { sh.innerHTML = ui.post ? postSheetHTML() : ui.viewPost ? postViewHTML() : ''; document.body.classList.toggle('noscroll', !!(ui.post || ui.viewPost)); }
+    if (sh) { sh.innerHTML = ui.post ? postSheetHTML() : ui.report ? reportSheetHTML() : ui.viewPost ? postViewHTML() : ''; document.body.classList.toggle('noscroll', !!(ui.post || ui.viewPost || ui.report)); }
     $('panel').innerHTML = ui.tab === 'workout' ? workoutHTML() : ui.tab === 'plans' ? plansHTML() : ui.tab === 'calendar' ? calendarHTML() : ui.tab === 'meals' ? mealsHTML() : ui.tab === 'feed' ? feedTabHTML() : profileHTML();
     var selTab = $('tab-' + ui.tab);
     if (selTab && selTab.parentNode && selTab.offsetWidth) {
@@ -3023,6 +3472,9 @@
   }
   function addExercise() {
     var name = ui.newEx.trim().replace(/\s+/g, ' ');
+    var listed = name && findExercise(name);
+    if (listed) { name = listed.n; if (listed.c) ui.newCardio = true; }
+    else if (name) rememberExercise(name, ui.newCardio);
     if (!name) { ui.err = { i: -2, msg: '' }; $('newex').focus(); return; }
     var k = key(name);
     var known = state.entries.filter(function (e) { return key(e.ex) === k; })[0];
@@ -3063,8 +3515,62 @@
     state.entries.push({ id: uid(), ex: name, kg: Math.round(toKg(w) * 10000) / 10000, reps: r, type: d.type || 'working', date: a.date, ts: Date.now(), wid: a.id });
     if (a.targets && a.targets[k]) d.manual = false;
     ui.err = null;
+    startRest();
     persist();
     ui.focus = '[data-dr="' + i + '"]';
+    render();
+  }
+  /* ---- rest timer between sets ---- */
+  var rest = null, audioCtx = null;
+  function restSecs() { var s = +(state.calc && state.calc.rest); return s >= 15 && s <= 600 ? s : 90; }
+  function startRest() {
+    rest = { end: Date.now() + restSecs() * 1000, total: restSecs(), done: false };
+    // Sound can only start after a tap, so get it ready now while the person is tapping Add set.
+    try { if (!audioCtx) { var AC = window.AudioContext || window.webkitAudioContext; if (AC) audioCtx = new AC(); } if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume(); } catch (e) { /* no sound */ }
+  }
+  function restBarHTML() {
+    if (!rest || !state.active) return '';
+    var left = Math.max(0, Math.ceil((rest.end - Date.now()) / 1000));
+    return '<div class="restbar' + (rest.done ? ' done' : '') + '" id="restbar"><i class="rprog" id="restprog" style="width:' + Math.round(left / rest.total * 100) + '%"></i>' +
+      '<span class="rl">' + (rest.done ? 'Rest over' : 'Rest') + '</span><b class="num" id="restleft" role="timer">' + (rest.done ? 'Go' : fmtDur(left * 1000)) + '</b>' +
+      '<span class="rbtns"><button type="button" data-a="rest-adj" data-v="-15" aria-label="15 seconds less">−15s</button>' +
+      '<button type="button" data-a="rest-adj" data-v="15" aria-label="15 seconds more">+15s</button>' +
+      '<button type="button" data-a="rest-skip">Skip</button></span></div>';
+  }
+  function restAlert() {
+    try { if (navigator.vibrate) navigator.vibrate([200, 100, 200]); } catch (e) { /* no vibration */ }
+    try {
+      if (!audioCtx) return;
+      [0, 0.25].forEach(function (at) {
+        var o = audioCtx.createOscillator(), g = audioCtx.createGain(), t = audioCtx.currentTime + at;
+        o.frequency.value = 880; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.3, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+        o.connect(g); g.connect(audioCtx.destination); o.start(t); o.stop(t + 0.2);
+      });
+    } catch (e) { /* no sound */ }
+  }
+  // Runs every second. Updates the bar in place so typing is never interrupted.
+  function tickRest() {
+    if (!rest || rest.done) return;
+    var left = Math.max(0, Math.ceil((rest.end - Date.now()) / 1000));
+    var t = $('restleft'), p = $('restprog'), bar = $('restbar');
+    if (left > 0) {
+      if (t) t.textContent = fmtDur(left * 1000);
+      if (p) p.style.width = Math.round(left / rest.total * 100) + '%';
+      return;
+    }
+    rest.done = true;
+    restAlert();
+    if (bar) { bar.classList.add('done'); bar.querySelector('.rl').textContent = 'Rest over'; if (t) t.textContent = 'Go'; }
+    setTimeout(function () { if (rest && rest.done) { rest = null; var b = $('restbar'); if (b) b.remove(); } }, 5000);
+  }
+  function restAction(a, t) {
+    if (!rest) return;
+    if (a === 'rest-skip') { rest = null; render(); return; }
+    var d = +t.dataset.v, total = Math.min(600, Math.max(15, rest.total + d));
+    rest.end = Math.max(Date.now() + 1000, rest.end + (total - rest.total) * 1000);
+    rest.total = total; rest.done = false;
+    state.calc.rest = total; // the next rest starts at this length
+    persist();
     render();
   }
   function finishWorkout() {
@@ -3073,6 +3579,7 @@
     if (!n) { ui.err = { i: -1, msg: 'Log at least one set before finishing, or discard the workout.' }; render(); return; }
     state.workouts.push({ id: a.id, date: a.date, start: a.start, end: Date.now(), plan: a.plan || null, planId: a.planId || null });
     state.active = null;
+    rest = null;
     ui.summary = a.id; ui.drafts = {}; ui.err = null; ui.armed = null; ui.benchAsk = a.id; ui.benchMsg = '';
     persist();
     render();
@@ -3129,14 +3636,20 @@
       if (state.socialReady && state.username && (ui.tab === 'feed' || ui.tab === 'profile')) {
         loadFriends();
         if (ui.tab === 'feed' && ui.fr.pane === 'board') loadBoard();
+        if (ui.tab === 'feed') { loadActivity(); if (ui.fr.pane === 'activity') markActivitySeen(); }
         if (state.postsReady && ui.tab === 'feed' && ui.fr.pane === 'feed') loadPosts('feed', false);
         if (state.postsReady && ui.tab === 'profile' && ui.pp === 'posts') loadPosts('mine', false);
-        if (ui.tab === 'profile') { ui.pp = ui.pp === 'settings' ? 'posts' : ui.pp; loadMyStats(); }
+        if (ui.tab === 'profile') { ui.pp = ui.pp === 'settings' ? 'posts' : ui.pp; loadMyStats(); ui.blocks = null; ui.blockMsg = ''; }
       }
       render();
     } else if (a === 'start') startWorkout(t.dataset.plan);
     else if (a.indexOf('auth-') === 0) authAction(a, t);
     else if (a === 'pane') { ui[t.dataset.k] = t.dataset.v; render(); window.scrollTo(0, 0); }
+    else if (a.indexOf('rest-') === 0) restAction(a, t);
+    else if (a.indexOf('ex-') === 0) exAction(a, t);
+    else if (a.indexOf('cm-') === 0) commentAction(a, t);
+    else if (a.indexOf('sf-') === 0) safetyAction(a, t);
+    else if (a === 'act-post') openPostById(t.dataset.id);
     else if (a.indexOf('pf-') === 0) profileAction(a);
     else if (a.indexOf('fr-') === 0) friendsAction(a, t);
     else if (a.indexOf('post-') === 0) postAction(a, t);
@@ -3164,7 +3677,7 @@
       armThen('discard', function () {
         var id = state.active.id;
         state.entries = state.entries.filter(function (e) { return e.wid !== id; });
-        state.active = null; ui.drafts = {}; ui.err = null;
+        state.active = null; ui.drafts = {}; ui.err = null; rest = null;
         persist(); render();
       });
     } else if (a === 'sel') { ui.sel = t.dataset.key; render(); }
@@ -3187,6 +3700,9 @@
     if (t.dataset && t.dataset.au !== undefined) { auth[t.dataset.au] = t.value; return; }
     if (t.dataset && t.dataset.pf !== undefined && ui.pf) { ui.pf[t.dataset.pf] = t.value; return; }
     if (t.id === 'frq') { ui.fr.q = t.value; searchUsers(); return; }
+    if (t.id === 'exnew') { ui.exNew = t.value; return; }
+    if (t.id === 'cmin' && ui.vp) { ui.vp.draft = t.value; return; }
+    if (t.id === 'repdet' && ui.report) { ui.report.details = t.value; return; }
     if (t.id === 'postcap' && ui.post) { ui.post.caption = t.value; return; }
     if (t.id === 'del-confirm') { ui.delText = t.value; var dg = $('del-go'); if (dg) dg.disabled = t.value.trim().toUpperCase() !== 'DELETE'; return; }
     if (t.dataset.mx !== undefined) { ui.mealDraft.d[t.dataset.mx] = t.value; return; }
@@ -3209,6 +3725,8 @@
     if (ev.key !== 'Enter') return;
     var t = ev.target;
     if (t.id === 'newex') { ev.preventDefault(); addExercise(); }
+    else if (t.id === 'exnew') { ev.preventDefault(); exAction('ex-add', t); }
+    else if (t.id === 'cmin') { ev.preventDefault(); commentAction('cm-send', t); }
     else if (t.dataset && t.dataset.cd !== undefined) { ev.preventDefault(); calcAction('calc-run', t); }
     else if (t.dataset && t.dataset.md !== undefined) { ev.preventDefault(); mealEnter(t); }
     else if (t.dataset && t.dataset.dw !== undefined) { ev.preventDefault(); var r = document.querySelector('[data-dr="' + t.dataset.dw + '"]'); if (r) r.focus(); }
@@ -3221,6 +3739,7 @@
     if (t.id === 'au-agree') { auth.agree = t.checked; return; }
     if (t.id === 'postfile') { pickPhoto(t.files && t.files[0]); return; }
     if (t.id === 'pfphoto') { setAvatar(t.files && t.files[0]); return; }
+    if (t.id === 'lbex') { ui.fr.lbEx = t.value; loadBoard(); render(); return; }
     if (t.id === 'bw' || t.id === 'tbw') {
       var bn = Number(String(t.value).trim().replace(',', '.'));
       state.bodyKg = isFinite(bn) && bn > 20 ? toKg(bn) : 0;
@@ -3233,7 +3752,28 @@
   setInterval(function () {
     var el = $('elapsed');
     if (el && state.active) el.textContent = fmtDur(Date.now() - state.active.start);
+    tickRest();
   }, 1000);
+
+  /* ---------- tests ---------- */
+  // tests/app.test.js loads this file with window.__LIFTS_TEST__ set, to reach the maths without starting the app.
+  if (window.__LIFTS_TEST__) {
+    window.__LIFTS_TEST__.api = {
+      e1rm: e1rm, analyze: analyze, exPRs: exPRs, counts: counts, typeOf: typeOf, planSlots: planSlots, slotsLabel: slotsLabel,
+      readUsername: readUsername, readProfile: readProfile, fmtLength: fmtLength, fmtDur: fmtDur, fmtW: fmtW, periodStart: periodStart,
+      volOf: volOf, toRows: toRows, exerciseList: exerciseList, rememberExercise: rememberExercise, findExercise: findExercise,
+      boardValue: boardValue, postDetails: postDetails, esc: esc, key: key,
+      freshState: freshState, setState: function (s) { state = s; }, getState: function () { return state; }
+    };
+    return;
+  }
+
+  /* ---------- installable app ---------- */
+  var installPrompt = null;
+  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); installPrompt = e; });
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () { /* still works online */ }); });
+  }
 
   /* ---------- start ---------- */
   render();

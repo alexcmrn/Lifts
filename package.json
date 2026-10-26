@@ -1,0 +1,8 @@
+{
+  "name": "lifts",
+  "private": true,
+  "description": "Lifts: log workouts and meals, and train with friends.",
+  "scripts": {
+    "test": "node --test \"tests/*.test.js\""
+  }
+}
