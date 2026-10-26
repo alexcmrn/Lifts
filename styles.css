@@ -27,7 +27,6 @@
   --ease: cubic-bezier(.2, .8, .2, 1);
   color-scheme: light;
   box-sizing: border-box;
-  padding-top: env(safe-area-inset-top, 0px);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -79,7 +78,14 @@
 }
 
 /* ---------- base ---------- */
-html { scroll-padding-top: calc(env(safe-area-inset-top, 0px) + 72px); }
+/* Opened from the iPhone home screen, the app is drawn under the status bar. On a page too short to scroll, iOS then
+   measures the screen as shorter by the status bar's height and the bottom tab bar floats above the bottom edge.
+   Making the page always at least that much taller fixes it. The header makes room for the status bar itself. */
+html {
+  min-height: calc(100% + env(safe-area-inset-top, 0px));
+  background: var(--bg);
+  scroll-padding-top: calc(env(safe-area-inset-top, 0px) + 72px);
+}
 *, *::before, *::after { box-sizing: border-box; }
 [hidden] { display: none !important; }
 body {
